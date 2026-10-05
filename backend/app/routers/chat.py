@@ -13,7 +13,7 @@ Requires GROQ_API_KEY env-var to be set.
  - Match recipe names directly and return ingredients
  - Answer cooking and shopping questions via Groq LLM
 GROQ_API_KEY is optional; without it the endpoint uses deterministic database responses.
-Optional: GROQ_MODEL (default: llama-3.3-70b-versatile).
+Optional: GROQ_MODEL (default: openai/gpt-oss-120b).
 """
 
 import json
@@ -47,7 +47,7 @@ router = APIRouter(prefix="/chat", tags=["AI Chat"])
 
 # ── Groq setup ───────────────────────────────────────────────────────────────
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 def _get_client():
@@ -61,6 +61,35 @@ def _get_client():
         return None
 
 
+def _strip_tables(text: str) -> str:
+    """Elimina filas de tablas Markdown (| cel | cel |) y separadores (|---|).
+
+    Las celdas supervivientes se convierten en viñetas para no perder info.
+    """
+    import re
+
+    out_lines = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        # Separador de tabla Markdown: |---|---| -> se descarta
+        if re.fullmatch(r"\|?[\s:\-|]+\|?", stripped) and ("-" in stripped):
+            continue
+        # Fila de tabla: | a | b | -> viñeta con celdas unidas
+        if stripped.startswith("|") and stripped.endswith("|") and stripped.count("|") >= 2:
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            cells = [c for c in cells if c and not set(c) <= set(":- ")]
+            if cells:
+                out_lines.append("• " + " — ".join(cells))
+            continue
+        out_lines.append(line)
+    # Casillas falsas "[ ]" / "[x]": la interfaz ya tiene checklist real,
+    # se quita el marcador y se deja viñeta normal.
+    cleaned = "\n".join(out_lines)
+    cleaned = re.sub(r"(?m)^(\s*(?:•|-)\s*)\[(?: |x|X)\]\s*", r"\1", cleaned)
+    cleaned = re.sub(r"(?m)^\s*\[(?: |x|X)\]\s*", "• ", cleaned)
+    return cleaned
+
+
 SYSTEM_PROMPT = """\
 Eres un asistente de cocina y compras para Mercadona. Tu nombre es 'mercadITo' 🫒.
 
@@ -69,6 +98,16 @@ Funciones clave:
 2. Cuando el usuario elija o mencione una receta, detalla los ingredientes de Mercadona que necesita o le faltan.
 3. Responde siempre en ESPAÑOL, sé amable, conciso y estructurado.
 4. Incluye emojis gastronómicos cuando sea oportuno.
+5. FORMATO OBLIGATORIO: NUNCA uses tablas (ni Markdown con | ni ASCII con +---).
+   Presenta la información con listas de viñetas (•), una por línea.
+   Usa **negrita** para nombres de recetas e ingredientes importantes.
+   Ejemplo:
+   • **Macarrones a la boloñesa** 🍝 (30 min, 2 personas)
+   • **Arroz a la cubana** 🍳 (20 min, 2 personas)
+6. ÉNFASIS: usa SOLO **negrita**. NUNCA uses _guiones bajos_ para enfatizar.
+7. CHECKLIST: la interfaz ya muestra los ingredientes faltantes con casillas
+   interactivas y botones para añadir. NUNCA los listes tú con [ ] o [x],
+   NO expliques las casillas y NO preguntes si los añades.
 """
 
 # ── Tool definitions for LLM ─────────────────────────────────────────────────
@@ -382,6 +421,10 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
                 "Recetas disponibles en la base de datos:\n"
                 + "\n".join(names_list)
             )
+
+    # 5b. Saneado: elimina restos de tablas Markdown/ASCII que el modelo
+    # pueda generar (la interfaz solo renderiza viñetas y negritas).
+    reply_text = _strip_tables(reply_text)
 
     return ChatResponse(
         reply=reply_text,

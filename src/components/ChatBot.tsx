@@ -37,7 +37,8 @@ function formatMarkdown(text: string) {
 function inlineMd(text: string) {
   return text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>');
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/_([^_\n]+)_/g, '<em>$1</em>');
 }
 
 // ── Interactive Checklist of Missing Ingredients ─────────────────────────────

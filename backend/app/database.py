@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import time
+import hashlib
 from typing import Generator
 
 def _resolve_db_path(database_url: str) -> str:
@@ -13,6 +14,90 @@ def _resolve_db_path(database_url: str) -> str:
 
 
 DB_FILE = os.path.abspath(_resolve_db_path(os.getenv("DATABASE_URL", "sqlite:///./mercadona.db")))
+
+SEED_USERS = [
+    ("user-ana", "Ana García", "ana.garcia@example.com"),
+    ("user-carlos", "Carlos Ruiz", "carlos.ruiz@example.com"),
+    ("user-marta", "Marta López", "marta.lopez@example.com"),
+    ("user-diego", "Diego Martín", "diego.martin@example.com"),
+]
+
+SEED_RECIPES = [
+    {
+        "id": "recipe-ensalada-quinoa",
+        "name": "Ensalada templada de quinoa y verduras",
+        "description": "Quinoa con verduras asadas, aguacate y aliño de limón.",
+        "category": "comida",
+        "servings": 2,
+        "prep_time_min": 30,
+        "image_emoji": "🥗",
+        "tags": "saludable,vegetariano,quinoa",
+        "user_id": "user-ana",
+        "ingredients": [
+            ("Quinoa", 180, "g", "despensa-conservas", 2.45, 0),
+            ("Calabacín", 1, "ud", "fruta-verdura", 1.20, 0),
+            ("Pimiento rojo", 1, "ud", "fruta-verdura", 1.10, 0),
+            ("Aguacate", 1, "ud", "fruta-verdura", 1.35, 0),
+            ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
+            ("Aceite de oliva virgen extra", 15, "g", "despensa-conservas", 4.70, 0),
+        ],
+    },
+    {
+        "id": "recipe-salmon-verduras",
+        "name": "Salmón al horno con verduras",
+        "description": "Lomos de salmón al horno con patata, cebolla y limón.",
+        "category": "cena",
+        "servings": 2,
+        "prep_time_min": 35,
+        "image_emoji": "🐟",
+        "tags": "pescado,horno,rapida",
+        "user_id": "user-carlos",
+        "ingredients": [
+            ("Lomos de salmón", 2, "ud", "pescado", 6.50, 0),
+            ("Patata", 500, "g", "fruta-verdura", 1.35, 0),
+            ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 0),
+            ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
+            ("Aceite de oliva virgen extra", 20, "g", "despensa-conservas", 4.70, 0),
+        ],
+    },
+    {
+        "id": "recipe-tortilla-patata",
+        "name": "Tortilla de patata con cebolla",
+        "description": "Tortilla jugosa de patata y cebolla para compartir.",
+        "category": "cena",
+        "servings": 4,
+        "prep_time_min": 45,
+        "image_emoji": "🍳",
+        "tags": "huevos,tradicional,española",
+        "user_id": "user-marta",
+        "ingredients": [
+            ("Patata", 800, "g", "fruta-verdura", 1.35, 0),
+            ("Huevos camperos", 6, "ud", "lacteos-huevos", 2.45, 0),
+            ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 1),
+            ("Aceite de oliva virgen extra", 250, "g", "despensa-conservas", 4.70, 0),
+            ("Sal fina", 3, "g", "despensa-conservas", 0.35, 0),
+        ],
+    },
+    {
+        "id": "recipe-lentejas-verduras",
+        "name": "Lentejas guisadas con verduras",
+        "description": "Guiso casero de lentejas, zanahoria, tomate y pimiento.",
+        "category": "comida",
+        "servings": 4,
+        "prep_time_min": 50,
+        "image_emoji": "🍲",
+        "tags": "legumbres,casera,vegetariano",
+        "user_id": "user-diego",
+        "ingredients": [
+            ("Lentejas pardinas", 300, "g", "despensa-conservas", 1.75, 0),
+            ("Zanahoria", 2, "ud", "fruta-verdura", 0.70, 0),
+            ("Pimiento verde", 1, "ud", "fruta-verdura", 0.55, 0),
+            ("Tomate triturado", 200, "g", "despensa-conservas", 0.95, 0),
+            ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 0),
+            ("Pimentón dulce", 5, "g", "despensa-conservas", 1.20, 0),
+        ],
+    },
+]
 
 def init_db():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
@@ -86,6 +171,20 @@ def init_db():
     );
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE,
+        created_at INTEGER NOT NULL
+    );
+    """)
+
+    cursor.execute("PRAGMA table_info(recipes)")
+    recipe_columns = [row[1] for row in cursor.fetchall()]
+    if "user_id" not in recipe_columns:
+        cursor.execute("ALTER TABLE recipes ADD COLUMN user_id TEXT")
+
     # 5. Create recipe_ingredients table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS recipe_ingredients (
@@ -100,6 +199,9 @@ def init_db():
         FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
     );
     """)
+
+    # Migrate quantities created before the API unit enum was restricted.
+    cursor.execute("UPDATE recipe_ingredients SET unit = 'g' WHERE unit = 'ml'")
 
     # 6. Create productos table (Mercadona DB schema)
     cursor.execute("""
@@ -238,6 +340,52 @@ def init_db():
                 INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, category_id, estimated_price, is_optional)
                 VALUES (?, ?, ?, 1.0, 'ud', ?, ?, 0)
             """, (f"ing_{rec[0]}_{hash(p_name) & 0xfffffff}", rec_id, p_name, p_cat, p_price))
+
+    # Add stable users and richer recipes to every existing database.
+    for user_id, name, email in SEED_USERS:
+        cursor.execute(
+            "INSERT OR IGNORE INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)",
+            (user_id, name, email, now),
+        )
+
+    legacy_users = cursor.execute(
+        "SELECT DISTINCT nombre_usuario FROM recetas WHERE nombre_usuario IS NOT NULL AND TRIM(nombre_usuario) != ''"
+    ).fetchall()
+    for (legacy_name,) in legacy_users:
+        legacy_id = f"user-legacy-{hashlib.sha1(legacy_name.encode('utf-8')).hexdigest()[:12]}"
+        cursor.execute(
+            "INSERT OR IGNORE INTO users (id, name, email, created_at) VALUES (?, ?, NULL, ?)",
+            (legacy_id, legacy_name, now),
+        )
+
+    for recipe in SEED_RECIPES:
+        cursor.execute("SELECT id FROM recipes WHERE id = ? OR name = ?", (recipe["id"], recipe["name"]))
+        if cursor.fetchone():
+            continue
+        cursor.execute("""
+            INSERT INTO recipes (id, name, description, category, servings, prep_time_min, image_emoji, tags, created_at, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            recipe["id"], recipe["name"], recipe["description"], recipe["category"],
+            recipe["servings"], recipe["prep_time_min"], recipe["image_emoji"],
+            recipe["tags"], now, recipe["user_id"],
+        ))
+        for ingredient_index, ingredient in enumerate(recipe["ingredients"]):
+            cursor.execute("""
+                INSERT OR IGNORE INTO recipe_ingredients
+                    (id, recipe_id, name, quantity, unit, category_id, estimated_price, is_optional)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (f"{recipe['id']}-ingredient-{ingredient_index}", recipe["id"], *ingredient))
+
+    # Link imported legacy recipes to the corresponding user records.
+    for rec_id, rec_user in cursor.execute("SELECT id, nombre_usuario FROM recetas").fetchall():
+        if not rec_user:
+            continue
+        legacy_id = f"user-legacy-{hashlib.sha1(rec_user.encode('utf-8')).hexdigest()[:12]}"
+        cursor.execute(
+            "UPDATE recipes SET user_id = ? WHERE id = ? AND user_id IS NULL",
+            (legacy_id, f"recipe_{rec_id}"),
+        )
 
     conn.commit()
     conn.close()
