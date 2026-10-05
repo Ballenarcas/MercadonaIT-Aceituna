@@ -285,7 +285,7 @@ export function App() {
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 mt-auto">
         <p>
-          Mercadona Shopping List · React + FastAPI · AceitunAI 🫒
+          Mercadona Shopping List · React + FastAPI · mercadITo 🫒
         </p>
       </footer>
 

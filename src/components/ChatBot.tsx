@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, ShoppingCart, ChefHat, Loader2 } from 'lucide-react';
+import { X, Send, Bot, ShoppingCart, ChefHat, Loader2 } from 'lucide-react';
 import type { ChatMessage, ShoppingList } from '../types';
 import { api } from '../services/api';
 
@@ -11,7 +11,7 @@ interface ChatBotProps {
 const WELCOME_MESSAGE: ChatMessage = {
   role: 'assistant',
   content:
-    '¡Hola! Soy **AceitunAI** 🫒, tu asistente de cocina y compras.\n\nPuedo ayudarte a:\n• 🍽️ **Recomendar recetas** según lo que te apetezca\n• 🛒 **Añadir ingredientes** a tu lista de la compra\n• 📋 **Ver tu lista** actual y sugerirte complementos\n\n¿Qué te apetece cocinar hoy?',
+    '¡Hola! Soy **mercadITo** 🫒, tu asistente de cocina y compras.\n\nPuedo ayudarte a:\n• 🍽️ **Recomendar recetas** según lo que te apetezca\n• 🛒 **Añadir ingredientes** a tu lista de la compra\n• 📋 **Ver tu lista** actual y sugerirte complementos\n\n¿Qué te apetece cocinar hoy?',
 };
 
 function formatMarkdown(text: string) {
@@ -117,7 +117,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ activeList, onIngredientAdded 
         className={`fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center cursor-pointer transition-all ${
           open ? 'bg-slate-700 hover:bg-slate-800' : 'bg-emerald-600 hover:bg-emerald-700'
         }`}
-        title="AceitunAI - Asistente de cocina"
+        title="mercadITo - Asistente de cocina"
       >
         {open ? (
           <X className="w-6 h-6 text-white" />
@@ -136,7 +136,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ activeList, onIngredientAdded 
           <div className="bg-emerald-700 text-white px-4 py-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-lg">🫒</div>
             <div className="flex-1">
-              <p className="font-bold text-sm">AceitunAI</p>
+              <p className="font-bold text-sm">mercadITo</p>
               <p className="text-[11px] text-emerald-200">
                 Lista activa: {activeList.emoji} {activeList.name}
               </p>
@@ -195,7 +195,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ activeList, onIngredientAdded 
               <div className="flex justify-start">
                 <div className="bg-slate-100 rounded-2xl rounded-bl-sm px-3 py-2.5 flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
-                  <span className="text-xs text-slate-500">AceitunAI está pensando…</span>
+                  <span className="text-xs text-slate-500">mercadITo está pensando…</span>
                 </div>
               </div>
             )}

@@ -41,7 +41,7 @@ def _get_client() -> Groq:
 
 
 SYSTEM_PROMPT = """\
-Eres un asistente de cocina y compras para Mercadona. Tu nombre es 'AceitunAI' 🫒.
+Eres un asistente de cocina y compras para Mercadona. Tu nombre es 'mercadITo' 🫒.
 
 Puedes ayudar al usuario a:
 1. Descubrir y recomendar recetas según lo que le apetezca, la ocasión, el número de comensales, etc.
@@ -164,7 +164,7 @@ def _execute_tool(name: str, args: Dict[str, Any], list_id: str, db: sqlite3.Con
 
 @router.post("", response_model=ChatResponse)
 def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
-    """Send a message to AceitunAI and get a recipe/shopping recommendation."""
+    """Send a message to mercadITo and get a recipe/shopping recommendation."""
     client = _get_client()
     model = os.getenv("GROQ_MODEL", GROQ_MODEL)
 

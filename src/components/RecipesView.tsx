@@ -527,7 +527,7 @@ export const RecipesView: React.FC<RecipesViewProps> = ({ activeList, onIngredie
         <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200">
           <ChefHat className="w-12 h-12 mx-auto mb-3 opacity-20" />
           <p className="font-semibold text-slate-500">No hay recetas todavía</p>
-          <p className="text-sm mt-1">Crea tu primera receta o pídele ideas a AceitunAI 🫒</p>
+          <p className="text-sm mt-1">Crea tu primera receta o pídele ideas a mercadITo 🫒</p>
           <button
             onClick={() => setShowCreate(true)}
             className="mt-4 bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-bold cursor-pointer hover:bg-emerald-700"
