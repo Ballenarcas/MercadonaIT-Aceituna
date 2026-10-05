@@ -156,16 +156,18 @@ def is_off_topic_message(text: str, conn: Optional[sqlite3.Connection] = None) -
 
 def extract_ingredients(text: str) -> List[str]:
     """Extract list of ingredients from user message."""
+    # Convert list-separating conjunctions to commas so items are split cleanly
+    cleaned = re.sub(r'\b(y|e)\b', ',', text, flags=re.IGNORECASE)
+
     # Filter common conversational words
     ignore_patterns = [
         r'\b(hola|buenas|tengo|hay|en la nevera|en casa|ingredientes|ingrediente|necesito|quiero|hacer|cocinar)\b',
-        r'\b(me queda|me quedan|solo|algo|con|de|un|una|unos|unas|el|la|los|las|y|o)\b',
+        r'\b(me queda|me quedan|solo|algo|un|una|unos|unas|el|la|los|las)\b',
     ]
-    cleaned = text
     for pat in ignore_patterns:
         cleaned = re.sub(pat, ' ', cleaned, flags=re.IGNORECASE)
 
-    # Split by commas, semicolons, and spaces
+    # Split by commas, semicolons, and newlines
     parts = re.split(r'[,;\.\n]+', cleaned)
     ingredients: List[str] = []
     for part in parts:
