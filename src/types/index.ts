@@ -13,8 +13,21 @@ export interface Category {
   description?: string;
 }
 
+export interface ShoppingList {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+  itemCount: number;
+  cartCount: number;
+  totalEstimated: number;
+  cartEstimated: number;
+  createdAt: number;
+}
+
 export interface ShoppingItem {
   id: string;
+  listId: string;
   name: string;
   categoryId: string;
   brand: Brand;
@@ -23,6 +36,7 @@ export interface ShoppingItem {
   estimatedPrice?: number; // Precio unitario estimado en €
   notes?: string;
   completed: boolean;
+  inCart: boolean; // Si ya está introducido físicamente en el carrito
   priority: Priority;
   isFavorite?: boolean;
   createdAt: number;
@@ -40,3 +54,4 @@ export interface CatalogProduct {
 
 export type SortOption = 'aisle' | 'name' | 'price-asc' | 'price-desc' | 'created';
 export type FilterStatus = 'all' | 'pending' | 'completed';
+export type ActiveTab = 'lists' | 'list' | 'cart';

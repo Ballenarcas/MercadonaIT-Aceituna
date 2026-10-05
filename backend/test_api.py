@@ -8,6 +8,19 @@ def test_health():
     assert response.status_code == 200
     assert response.json()["status"] == "online"
 
+def test_lists():
+    response = client.get("/api/lists")
+    assert response.status_code == 200
+    lists = response.json()
+    assert len(lists) >= 1
+
+    # Create a new list
+    new_list_data = {"name": "Cena de Tacos", "emoji": "🌮", "color": "#f59e0b"}
+    res_create = client.post("/api/lists", json=new_list_data)
+    assert res_create.status_code == 201
+    created_list = res_create.json()
+    assert created_list["name"] == "Cena de Tacos"
+
 def test_categories():
     response = client.get("/api/categories")
     assert response.status_code == 200
@@ -24,14 +37,15 @@ def test_catalog():
 
 def test_shopping_items_flow():
     # 1. Reset sample items
-    res_reset = client.post("/api/items/reset-sample")
+    res_reset = client.post("/api/items/reset-sample?list_id=default")
     assert res_reset.status_code == 200
     items = res_reset.json()
     assert len(items) > 0
 
-    # 2. Add new item
+    # 2. Add new item to list
     new_item_data = {
         "name": "Aceitunas Rellenas Hacendado",
+        "listId": "default",
         "categoryId": "aperitivos-dulces",
         "brand": "Hacendado",
         "quantity": 3,
@@ -44,20 +58,20 @@ def test_shopping_items_flow():
     assert res_create.status_code == 201
     created_item = res_create.json()
     assert created_item["name"] == "Aceitunas Rellenas Hacendado"
-    assert created_item["completed"] is False
+    assert created_item["inCart"] is False
     item_id = created_item["id"]
 
-    # 3. Toggle completed
-    res_toggle = client.patch(f"/api/items/{item_id}/toggle")
-    assert res_toggle.status_code == 200
-    assert res_toggle.json()["completed"] is True
+    # 3. Move to cart via toggle-cart
+    res_cart = client.patch(f"/api/items/{item_id}/toggle-cart")
+    assert res_cart.status_code == 200
+    assert res_cart.json()["inCart"] is True
 
     # 4. Check stats
-    res_stats = client.get("/api/items/stats")
+    res_stats = client.get("/api/items/stats?list_id=default")
     assert res_stats.status_code == 200
     stats = res_stats.json()
     assert stats["totalItems"] >= 1
-    assert stats["completedItems"] >= 1
+    assert stats["cartItemsCount"] >= 1
 
     # 5. Delete item
     res_del = client.delete(f"/api/items/{item_id}")
@@ -66,10 +80,12 @@ def test_shopping_items_flow():
 if __name__ == "__main__":
     print("Testing health check...")
     test_health()
+    print("Testing lists...")
+    test_lists()
     print("Testing categories...")
     test_categories()
     print("Testing catalog...")
     test_catalog()
-    print("Testing shopping items flow...")
+    print("Testing shopping items and cart flow...")
     test_shopping_items_flow()
     print("[SUCCESS] All FastAPI backend tests passed successfully!")
