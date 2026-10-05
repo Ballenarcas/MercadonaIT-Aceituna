@@ -159,7 +159,7 @@ class RecipeResponse(RecipeBase):
 
 class AddRecipeToListRequest(BaseModel):
     listId: str = Field(default="default", alias="listId")
-    servings: Optional[int] = None   # scale ingredients for N servings (default = recipe.servings)
+    servings: Optional[int] = Field(default=None, gt=0)   # scale ingredients for N servings (default = recipe.servings)
     skipOptional: bool = Field(default=False, alias="skipOptional")
 
     model_config = ConfigDict(populate_by_name=True)

@@ -39,7 +39,7 @@ POPULAR_CATALOG = [
     {"id": "cat-21", "name": "Tomate frito receta artesana", "categoryId": "despensa-conservas", "brand": "Hacendado", "defaultUnit": "ud", "typicalPrice": 1.40, "popular": True},
     {"id": "cat-22", "name": "Anacardos tostados sin sal", "categoryId": "aperitivos-dulces", "brand": "Hacendado", "defaultUnit": "ud", "typicalPrice": 2.70, "popular": False},
     {"id": "cat-23", "name": "Chocolate negro 85% cacao", "categoryId": "aperitivos-dulces", "brand": "Hacendado", "defaultUnit": "ud", "typicalPrice": 1.25, "popular": True},
-    {"id": "cat-24", "name": "Pechuga de pollo fileteada corte fino", "categoryId": "carne", "brand": "Hacendado", "defaultUnit": "bandeja", "typicalPrice": 4.80, "popular": True},
+    {"id": "cat-24", "name": "Pechuga de pollo fileteada corte fino", "categoryId": "carne", "brand": "Hacendado", "defaultUnit": "bandeja", "typicalPrice": 3.85, "popular": True},
     {"id": "cat-25", "name": "Carne picada mixta vacuno/cerdo", "categoryId": "carne", "brand": "Hacendado", "defaultUnit": "bandeja", "typicalPrice": 4.10, "popular": False},
     {"id": "cat-26", "name": "Lomos de Salmón fresco sin espinas", "categoryId": "pescado", "brand": "General", "defaultUnit": "bandeja", "typicalPrice": 6.50, "popular": True},
     {"id": "cat-27", "name": "Jamón Serrano Gran Reserva cortado", "categoryId": "charcuteria-quesos", "brand": "Hacendado", "defaultUnit": "pack", "typicalPrice": 2.65, "popular": True},

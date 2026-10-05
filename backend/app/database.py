@@ -13,7 +13,20 @@ def _resolve_db_path(database_url: str) -> str:
     return database_url
 
 
-DB_FILE = os.path.abspath(_resolve_db_path(os.getenv("DATABASE_URL", "sqlite:///./mercadona.db")))
+def _default_db_file() -> str:
+    """Ruta por defecto anclada a la raíz del repo (no depende del CWD).
+
+    Evita BD fantasmas como backend/mercadona.db al arrancar desde otra carpeta.
+    Se puede override con DATABASE_URL.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))  # backend/app
+    repo_root = os.path.dirname(os.path.dirname(here))  # repo
+    return os.path.join(repo_root, "mercadona.db")
+
+
+DB_FILE = os.path.abspath(
+    _resolve_db_path(os.getenv("DATABASE_URL", "sqlite:///" + _default_db_file()))
+)
 
 SEED_USERS = [
     ("user-ana", "Ana García", "ana.garcia@example.com"),
@@ -34,12 +47,12 @@ SEED_RECIPES = [
         "tags": "saludable,vegetariano,quinoa",
         "user_id": "user-ana",
         "ingredients": [
-            ("Quinoa", 180, "g", "despensa-conservas", 2.45, 0),
-            ("Calabacín", 1, "ud", "fruta-verdura", 1.20, 0),
-            ("Pimiento rojo", 1, "ud", "fruta-verdura", 1.10, 0),
-            ("Aguacate", 1, "ud", "fruta-verdura", 1.35, 0),
-            ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
-            ("Aceite de oliva virgen extra", 15, "g", "despensa-conservas", 4.70, 0),
+            ("Quinoa", 1, "ud", "despensa-conservas", 2.65, 0),
+            ("Calabacín", 0.3, "kg", "fruta-verdura", 2.20, 0),
+            ("Pimiento rojo", 1, "ud", "fruta-verdura", 0.50, 0),
+            ("Aguacate", 1, "ud", "fruta-verdura", 1.65, 0),
+            ("Limón", 0.15, "kg", "fruta-verdura", 1.79, 0),
+            ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
         ],
     },
     {
@@ -53,11 +66,11 @@ SEED_RECIPES = [
         "tags": "pescado,horno,rapida",
         "user_id": "user-carlos",
         "ingredients": [
-            ("Lomos de salmón", 2, "ud", "pescado", 6.50, 0),
-            ("Patata", 500, "g", "fruta-verdura", 1.35, 0),
-            ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 0),
-            ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
-            ("Aceite de oliva virgen extra", 20, "g", "despensa-conservas", 4.70, 0),
+            ("Lomos de salmón", 1, "bandeja", "pescado", 6.50, 0),
+            ("Patata", 0.5, "kg", "fruta-verdura", 1.55, 0),
+            ("Cebolla", 0.2, "kg", "fruta-verdura", 2.00, 0),
+            ("Limón", 0.15, "kg", "fruta-verdura", 1.79, 0),
+            ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
         ],
     },
     {
@@ -71,11 +84,11 @@ SEED_RECIPES = [
         "tags": "huevos,tradicional,española",
         "user_id": "user-marta",
         "ingredients": [
-            ("Patata", 800, "g", "fruta-verdura", 1.35, 0),
-            ("Huevos camperos", 6, "ud", "lacteos-huevos", 2.45, 0),
-            ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 1),
-            ("Aceite de oliva virgen extra", 250, "g", "despensa-conservas", 4.70, 0),
-            ("Sal fina", 3, "g", "despensa-conservas", 0.35, 0),
+            ("Patata", 0.8, "kg", "fruta-verdura", 1.55, 0),
+            ("Huevos camperos", 1, "docena", "lacteos-huevos", 3.35, 0),
+            ("Cebolla", 0.2, "kg", "fruta-verdura", 2.00, 1),
+            ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
+            ("Sal fina", 1, "ud", "despensa-conservas", 0.35, 0),
         ],
     },
     {
@@ -89,17 +102,22 @@ SEED_RECIPES = [
         "tags": "legumbres,casera,vegetariano",
         "user_id": "user-diego",
         "ingredients": [
-            ("Lentejas pardinas", 300, "g", "despensa-conservas", 1.75, 0),
-            ("Zanahoria", 2, "ud", "fruta-verdura", 0.70, 0),
-            ("Pimiento verde", 1, "ud", "fruta-verdura", 0.55, 0),
-            ("Tomate triturado", 200, "g", "despensa-conservas", 0.95, 0),
-            ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 0),
-            ("Pimentón dulce", 5, "g", "despensa-conservas", 1.20, 0),
+            ("Lentejas pardinas", 1, "ud", "despensa-conservas", 1.85, 0),
+            ("Zanahoria", 0.15, "kg", "fruta-verdura", 1.20, 0),
+            ("Pimiento verde", 1, "ud", "fruta-verdura", 0.50, 0),
+            ("Tomate triturado", 1, "ud", "despensa-conservas", 0.55, 0),
+            ("Cebolla", 0.2, "kg", "fruta-verdura", 2.00, 0),
+            ("Pimentón dulce", 1, "ud", "despensa-conservas", 1.20, 0),
         ],
     },
 ]
 
-def init_db():
+def init_db(seed: bool = False):
+    """Crea el esquema (siempre) y, solo si seed=True, sincroniza datos semilla.
+
+    Separar el seed evita escrituras pesadas en cada import: al importar solo
+    se garantiza el esquema; los datos se siembran desde el lifespan.
+    """
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     cursor = conn.cursor()
 
@@ -233,7 +251,13 @@ def init_db():
     );
     """)
 
-    # Seed productos, recetas, and recipe data if empty
+    # Seed productos, recetas, and recipe data if empty (solo con seed=True,
+    # para no hacer escrituras pesadas en cada import).
+    if not seed:
+        conn.commit()
+        conn.close()
+        return
+
     cursor.execute("SELECT COUNT(*) FROM recetas")
     recetas_count = cursor.fetchone()[0]
 
@@ -323,23 +347,29 @@ def init_db():
         """, (rec_id, rec_name, f"Deliciosa receta de {rec_name} elaborada con ingredientes de Mercadona.", emoji, now + idx * 1000))
 
         cursor.execute("""
-            SELECT p.nombre, p.precio, ri.cantidad_necesaria_gr
+            SELECT p.nombre, p.precio, p.peso_neto_gr, ri.cantidad_necesaria_gr
             FROM receta_ingredientes ri
             JOIN productos p ON p.id = ri.producto_id
             WHERE ri.receta_id = ?
         """, (rec[0],))
         for ing_row in cursor.fetchall():
             p_name = ing_row[0]
-            p_price = ing_row[1]
+            grams = ing_row[3] or 0
+            if grams and ing_row[2]:
+                # Prorratea el precio del envase a los gramos de la receta
+                ing_price: float | None = round(ing_row[1] * grams / ing_row[2], 2)
+            else:
+                ing_price = ing_row[1]
             p_cat = "otros"
             for k, v in category_map.items():
                 if k in p_name.lower():
                     p_cat = v
                     break
+            stable_hash = hashlib.md5(p_name.encode("utf-8")).hexdigest()[:7]
             cursor.execute("""
                 INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, category_id, estimated_price, is_optional)
-                VALUES (?, ?, ?, 1.0, 'ud', ?, ?, 0)
-            """, (f"ing_{rec[0]}_{hash(p_name) & 0xfffffff}", rec_id, p_name, p_cat, p_price))
+                VALUES (?, ?, ?, ?, 'g', ?, ?, 0)
+            """, (f"ing_{rec[0]}_{stable_hash}", rec_id, p_name, grams or 1.0, p_cat, ing_price))
 
     # Add stable users and richer recipes to every existing database.
     for user_id, name, email in SEED_USERS:

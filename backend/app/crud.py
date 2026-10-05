@@ -125,6 +125,20 @@ def delete_list(conn: sqlite3.Connection, list_id: str) -> bool:
 
 # --- ITEMS CRUD ---
 
+def _safe_literal(value: Any, allowed: tuple, default: str) -> str:
+    """Devuelve value si está en allowed; si no, default.
+
+    Evita que un valor sucio en BD (p. ej. brand/unit fuera del enum)
+    provoque ValidationError en cascada en todos los endpoints.
+    """
+    return value if value in allowed else default
+
+
+BRANDS = ('Hacendado', 'Bosque Verde', 'Deliplus', 'Compy', 'General')
+UNITS = ('ud', 'kg', 'g', 'pack', 'litro', 'docena', 'bandeja')
+PRIORITIES = ('baja', 'media', 'alta')
+
+
 def row_to_item(row: sqlite3.Row) -> ShoppingItemResponse:
     in_cart = bool(row["in_cart"] if "in_cart" in row.keys() else row["completed"])
     completed = bool(row["completed"]) or in_cart
@@ -133,14 +147,14 @@ def row_to_item(row: sqlite3.Row) -> ShoppingItemResponse:
         name=row["name"],
         listId=row["list_id"] if "list_id" in row.keys() else "default",
         categoryId=row["category_id"],
-        brand=row["brand"], # type: ignore
+        brand=_safe_literal(row["brand"], BRANDS, "General"),
         quantity=float(row["quantity"]),
-        unit=row["unit"], # type: ignore
+        unit=_safe_literal(row["unit"], UNITS, "ud"),
         estimatedPrice=float(row["estimated_price"]) if row["estimated_price"] is not None else None,
         notes=row["notes"],
         completed=completed,
         inCart=in_cart,
-        priority=row["priority"], # type: ignore
+        priority=_safe_literal(row["priority"], PRIORITIES, "media"),
         createdAt=int(row["created_at"])
     )
 
@@ -410,7 +424,7 @@ def _row_to_ingredient(row: sqlite3.Row) -> RecipeIngredientResponse:
         recipeId=row["recipe_id"],
         name=row["name"],
         quantity=float(row["quantity"]),
-        unit=row["unit"],  # type: ignore
+        unit=_safe_literal(row["unit"], UNITS, "ud"),
         categoryId=row["category_id"],
         estimatedPrice=float(row["estimated_price"]) if row["estimated_price"] is not None else None,
         isOptional=bool(row["is_optional"]),
@@ -524,14 +538,16 @@ def add_recipe_to_list(
         if req.skipOptional and ing.isOptional:
             continue
         item_id = f"item_{now + idx}_{uuid.uuid4().hex[:6]}"
-        scaled_qty = round(ing.quantity * scale, 2)
+        # Los ingredientes ya están en formato de compra (1 tarro, 1 litro...),
+        # se copian tal cual escalando la cantidad por comensales.
+        buy_qty = round(ing.quantity * scale, 2)
         conn.cursor().execute("""
             INSERT INTO shopping_items
                 (id, list_id, name, category_id, brand, quantity, unit, estimated_price, notes, completed, in_cart, priority, created_at)
             VALUES (?, ?, ?, ?, 'General', ?, ?, ?, ?, 0, 0, 'media', ?)
         """, (
             item_id, req.listId, ing.name, ing.categoryId,
-            scaled_qty, ing.unit, ing.estimatedPrice,
+            buy_qty, ing.unit, ing.estimatedPrice,
             f"De receta: {recipe.name}", now + idx,
         ))
         conn.commit()
