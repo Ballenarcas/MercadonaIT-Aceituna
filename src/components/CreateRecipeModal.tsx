@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChefHat, Plus, Trash2, X } from 'lucide-react';
 import type { Recipe, Unit } from '../types';
 import { api } from '../services/api';
@@ -7,6 +7,8 @@ interface CreateRecipeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (recipe: Recipe) => void;
+  recipeToEdit?: Recipe | null;
+  onUpdated?: (recipe: Recipe) => void;
 }
 
 const COMMON_EMOJIS = ['🍽️', '🍝', '🥘', '🍲', '🥗', '🍳', '🥩', '🐟', '🍰', '🥪', '🥣', '🌮'];
@@ -17,6 +19,8 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
   isOpen,
   onClose,
   onCreated,
+  recipeToEdit,
+  onUpdated,
 }) => {
   const [name, setName] = useState('');
   const [creator, setCreator] = useState('@mi_cocina');
@@ -32,6 +36,45 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const isEditing = Boolean(recipeToEdit);
+
+  useEffect(() => {
+    if (recipeToEdit) {
+      setName(recipeToEdit.name || '');
+      setCreator((recipeToEdit as unknown as { creator?: string }).creator || '@mi_cocina');
+      setDescription(recipeToEdit.description || '');
+      setCategory(recipeToEdit.category || 'comida');
+      setServings(recipeToEdit.servings || 2);
+      setPrepTimeMin(recipeToEdit.prepTimeMin || 25);
+      setImageEmoji(recipeToEdit.imageEmoji || '🍽️');
+      setImageUrl((recipeToEdit as unknown as { image?: string }).image || '');
+      setTags(recipeToEdit.tags || '');
+      if (recipeToEdit.ingredients && recipeToEdit.ingredients.length > 0) {
+        setIngredients(
+          recipeToEdit.ingredients.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            unit: i.unit as Unit,
+          }))
+        );
+      } else {
+        setIngredients([{ name: '', quantity: 1, unit: 'ud' }]);
+      }
+    } else {
+      setName('');
+      setCreator('@mi_cocina');
+      setDescription('');
+      setCategory('comida');
+      setServings(2);
+      setPrepTimeMin(25);
+      setImageEmoji('🍽️');
+      setImageUrl('');
+      setTags('');
+      setIngredients([{ name: '', quantity: 1, unit: 'ud' }]);
+    }
+    setError('');
+  }, [recipeToEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -62,63 +105,125 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
     setError('');
 
     try {
-      const created = await api.createRecipe({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        category,
-        servings: Number(servings) || 2,
-        prepTimeMin: Number(prepTimeMin) || 25,
-        imageEmoji,
-        tags: tags.trim(),
-        ingredients: validIngredients.map((ing) => ({
-          id: '',
-          recipeId: '',
-          name: ing.name.trim(),
-          quantity: Number(ing.quantity) || 1,
-          unit: ing.unit,
-          categoryId: 'otros',
-          isOptional: false,
-        })),
-      });
+      if (isEditing && recipeToEdit && onUpdated) {
+        const updated = await api.updateRecipe(recipeToEdit.id, {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          category,
+          servings: Number(servings) || 2,
+          prepTimeMin: Number(prepTimeMin) || 25,
+          imageEmoji,
+          tags: tags.trim(),
+          ingredients: validIngredients.map((ing) => ({
+            id: '',
+            recipeId: recipeToEdit.id,
+            name: ing.name.trim(),
+            quantity: Number(ing.quantity) || 1,
+            unit: ing.unit,
+            categoryId: 'otros',
+            isOptional: false,
+          })),
+        });
 
-      // Pass along creator / custom image if returned recipe needs them in UI
-      const finalRecipe: Recipe = {
-        ...created,
-        name: created.name || name.trim(),
-        description: created.description || description.trim(),
-      };
+        const finalUpdated: Recipe = {
+          ...recipeToEdit,
+          ...updated,
+          name: updated.name || name.trim(),
+          description: updated.description || description.trim(),
+          category: updated.category || category,
+          servings: updated.servings || servings,
+          prepTimeMin: updated.prepTimeMin || prepTimeMin,
+          imageEmoji: updated.imageEmoji || imageEmoji,
+          ingredients: updated.ingredients || validIngredients.map((ing, idx) => ({
+            id: `ing_${idx}`,
+            recipeId: recipeToEdit.id,
+            name: ing.name.trim(),
+            quantity: Number(ing.quantity) || 1,
+            unit: ing.unit,
+            categoryId: 'otros',
+            isOptional: false,
+          })),
+        };
 
-      onCreated(finalRecipe);
-      onClose();
-      // Reset form
-      setName('');
-      setDescription('');
-      setImageUrl('');
-      setIngredients([{ name: '', quantity: 1, unit: 'ud' }]);
+        onUpdated(finalUpdated);
+        onClose();
+      } else {
+        const created = await api.createRecipe({
+          name: name.trim(),
+          description: description.trim() || undefined,
+          category,
+          servings: Number(servings) || 2,
+          prepTimeMin: Number(prepTimeMin) || 25,
+          imageEmoji,
+          tags: tags.trim(),
+          ingredients: validIngredients.map((ing) => ({
+            id: '',
+            recipeId: '',
+            name: ing.name.trim(),
+            quantity: Number(ing.quantity) || 1,
+            unit: ing.unit,
+            categoryId: 'otros',
+            isOptional: false,
+          })),
+        });
+
+        const finalRecipe: Recipe = {
+          ...created,
+          name: created.name || name.trim(),
+          description: created.description || description.trim(),
+        };
+
+        onCreated(finalRecipe);
+        onClose();
+      }
     } catch {
-      // In case backend is offline, create a local recipe object so the user can still use it
-      const fallbackRecipe: Recipe = {
-        id: `recipe_${Date.now()}`,
-        name: name.trim(),
-        description: description.trim() || 'Receta casera',
-        category,
-        servings: Number(servings) || 2,
-        prepTimeMin: Number(prepTimeMin) || 25,
-        imageEmoji,
-        tags: tags.trim(),
-        ingredients: validIngredients.map((ing, i) => ({
-          id: `ing_${i}`,
-          recipeId: `recipe_${Date.now()}`,
-          name: ing.name.trim(),
-          quantity: Number(ing.quantity) || 1,
-          unit: ing.unit,
-          categoryId: 'otros',
-          isOptional: false,
-        })),
-        createdAt: Date.now(),
-      };
-      onCreated(fallbackRecipe);
-      onClose();
+      // Offline fallback
+      if (isEditing && recipeToEdit && onUpdated) {
+        const localUpdated: Recipe = {
+          ...recipeToEdit,
+          name: name.trim(),
+          description: description.trim() || undefined,
+          category,
+          servings: Number(servings) || 2,
+          prepTimeMin: Number(prepTimeMin) || 25,
+          imageEmoji,
+          tags: tags.trim(),
+          ingredients: validIngredients.map((ing, i) => ({
+            id: `ing_${i}`,
+            recipeId: recipeToEdit.id,
+            name: ing.name.trim(),
+            quantity: Number(ing.quantity) || 1,
+            unit: ing.unit,
+            categoryId: 'otros',
+            isOptional: false,
+          })),
+        };
+        onUpdated(localUpdated);
+        onClose();
+      } else {
+        const fallbackRecipe: Recipe = {
+          id: `recipe_${Date.now()}`,
+          name: name.trim(),
+          description: description.trim() || 'Receta casera',
+          category,
+          servings: Number(servings) || 2,
+          prepTimeMin: Number(prepTimeMin) || 25,
+          imageEmoji,
+          tags: tags.trim(),
+          ingredients: validIngredients.map((ing, i) => ({
+            id: `ing_${i}`,
+            recipeId: `recipe_${Date.now()}`,
+            name: ing.name.trim(),
+            quantity: Number(ing.quantity) || 1,
+            unit: ing.unit,
+            categoryId: 'otros',
+            isOptional: false,
+          })),
+          createdAt: Date.now(),
+        };
+        onCreated(fallbackRecipe);
+        onClose();
+      }
     } finally {
       setLoading(false);
     }
@@ -134,8 +239,14 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
               <ChefHat className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-800">Crear nueva receta</h2>
-              <p className="text-xs text-gray-500">Comparte tu receta con la comunidad de Mercadona</p>
+              <h2 className="text-lg font-bold text-gray-800">
+                {isEditing ? 'Editar receta' : 'Crear nueva receta'}
+              </h2>
+              <p className="text-xs text-gray-500">
+                {isEditing
+                  ? 'Modifica los ingredientes y detalles de tu receta'
+                  : 'Comparte tu receta con la comunidad de Mercadona'}
+              </p>
             </div>
           </div>
           <button
@@ -352,9 +463,13 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 bg-[#00703c] text-white font-semibold rounded-lg hover:bg-[#005a30] transition-colors text-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
+              className="px-5 py-2 bg-[#00703c] text-white font-semibold rounded-lg hover:bg-[#005a30] transition-colors text-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs"
             >
-              {loading ? 'Guardando...' : 'Crear receta'}
+              {loading
+                ? 'Guardando...'
+                : isEditing
+                ? 'Guardar cambios'
+                : 'Crear receta'}
             </button>
           </div>
         </form>

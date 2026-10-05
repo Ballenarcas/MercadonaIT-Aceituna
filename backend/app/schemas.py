@@ -148,6 +148,7 @@ class RecipeUpdate(BaseModel):
     prepTimeMin: Optional[int] = Field(default=None, alias="prepTimeMin")
     imageEmoji: Optional[str] = Field(default=None, alias="imageEmoji")
     tags: Optional[str] = None
+    ingredients: Optional[List[RecipeIngredientCreate]] = None
 
     model_config = ConfigDict(populate_by_name=True)
 

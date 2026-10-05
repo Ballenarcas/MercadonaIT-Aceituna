@@ -199,6 +199,16 @@ export const api = {
     return res.json();
   },
 
+  async updateRecipe(id: string, updates: Partial<Recipe>): Promise<Recipe> {
+    const res = await fetch(`${API_BASE_URL}/recipes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error(`Error al actualizar receta: ${res.statusText}`);
+    return res.json();
+  },
+
   async deleteRecipe(id: string): Promise<void> {
     const res = await fetch(`${API_BASE_URL}/recipes/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Error al eliminar receta: ${res.statusText}`);
