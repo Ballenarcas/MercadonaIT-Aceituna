@@ -98,6 +98,42 @@ def test_purchase_format_converts_to_package(db_conn):
     assert crud._purchase_format(db_conn, "Cebolla", 150.0, "g", 0.30) == (150.0, "g", 0.30)
 
 
+def test_recipe_ingredient_prices_are_unit_prices(db_conn):
+    """Convención: total de línea = quantity * estimatedPrice.
+
+    Un precio de envase guardado como unitario dispara totales absurdos
+    (p. ej. 180 g de quinoa a 2,45 €/g = 441 €). Este test lo impide.
+    """
+    db_conn.execute(
+        """CREATE TABLE IF NOT EXISTS recipes (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+            category TEXT NOT NULL DEFAULT 'general', servings INTEGER NOT NULL DEFAULT 2,
+            prep_time_min INTEGER NOT NULL DEFAULT 30, image_emoji TEXT NOT NULL DEFAULT '🍽️',
+            tags TEXT DEFAULT '', created_at INTEGER NOT NULL)"""
+    )
+    db_conn.execute(
+        """CREATE TABLE IF NOT EXISTS recipe_ingredients (
+            id TEXT PRIMARY KEY, recipe_id TEXT NOT NULL, name TEXT NOT NULL,
+            quantity REAL NOT NULL DEFAULT 1.0, unit TEXT NOT NULL DEFAULT 'ud',
+            category_id TEXT NOT NULL DEFAULT 'otros', estimated_price REAL,
+            is_optional INTEGER NOT NULL DEFAULT 0)"""
+    )
+    db_conn.execute(
+        "INSERT INTO recipes (id, name, servings, created_at) VALUES ('r-u', 'U', 2, 1000)"
+    )
+    # 150 g de tomate a precio unitario real (1,40 € / 300 g)
+    db_conn.execute(
+        "INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, estimated_price)"
+        " VALUES ('ri-u', 'r-u', 'Tomate', 150.0, 'g', 0.004667)"
+    )
+    db_conn.commit()
+
+    recipe = crud.get_recipe(db_conn, "r-u")
+    assert recipe is not None
+    line_total = sum(i.quantity * (i.estimatedPrice or 0) for i in recipe.ingredients)
+    assert line_total == pytest.approx(0.70, abs=0.01)
+
+
 def test_default_db_path_is_repo_anchored():
     default = db_module._default_db_file()
     assert os.path.isabs(default)

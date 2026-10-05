@@ -154,7 +154,7 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
               </div>
               {ing.estimatedPrice !== undefined && ing.estimatedPrice !== null && (
                 <span className="text-[11px] font-semibold text-emerald-700 whitespace-nowrap">
-                  {ing.estimatedPrice.toFixed(2)} €
+                  {((ing.quantity || 0) * ing.estimatedPrice).toFixed(2)} €
                 </span>
               )}
             </label>
