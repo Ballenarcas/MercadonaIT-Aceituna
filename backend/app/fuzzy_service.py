@@ -61,6 +61,41 @@ def is_giving_ingredients(text: str) -> bool:
         return True
     return False
 
+def is_off_topic_message(text: str) -> bool:
+    """Detect if a user message is clearly off-topic (unrelated to cooking, food, recipes, or shopping)."""
+    t = text.lower().strip()
+    if not t:
+        return False
+
+    # Food, recipe, kitchen, or supermarket keywords override off-topic detection
+    food_indicators = [
+        r'\b(receta|recetas|ingrediente|ingredientes|cocina|cocinar|comida|cena|desayuno|almuerzo|merienda|postre)\b',
+        r'\b(plato|sart[eé]n|horno|olla|fre[ií]r|hervir|asar|guiso|salsa|bechamel|caldo)\b',
+        r'\b(mercadona|hacendado|supermercado|lista|carrito|compra|comprar|precio|cu[aá]nto cuesta|euros|€)\b',
+        r'\b(arroz|pasta|macarrones|pollo|ternera|cerdo|carne|pescado|at[uú]n|huevo|huevos|leche|tomate|patata|patatas|cebolla|ajo|aceite|queso|pan|fruta|verdura|legumbre|lentejas)\b',
+    ]
+    if any(re.search(pat, t) for pat in food_indicators):
+        return False
+
+    off_topic_patterns = [
+        # Programming / Tech / Software
+        r'\b(python|javascript|typescript|c\+\+|c\#|java|rust|golang|php|html|css|sql|docker|kubernetes|linux|windows)\b',
+        r'\b(programar|programaci[oó]n|c[oó]digo|script|software|hardware|compilar|compilador|algoritmo|depurar|debug|backend|frontend)\b',
+        r'\b(repositorio|git|github|pull request|commit|terminal|bash|powershell|api rest)\b',
+        # Mathematics / Physics / Science
+        r'\b(derivada|integral|ecuaci[oó]n|teorema|trigonometr[ií]a|f[ií]sica cu[aá]ntica|relatividad|matem[aá]tica|matem[aá]ticas)\b',
+        # Politics / Geopolitics
+        r'\b(elecciones|partido pol[ií]tico|presidente del gobierno|diputado|ministro|senado|parlamento|geopol[ií]tica|guerra mundial)\b',
+        # Sports & non-culinary trivia
+        r'\b(champions league|la liga|bal[oó]n de oro|f[oó]rmula 1|motogp|partido de f[uú]tbol|qui[eé]n gan[oó] el mundial|mundial de f[uú]tbol)\b',
+        # General non-food requests
+        r'\b(capital de|qui[eé]n descubri[oó]|qui[eé]n invent[oó]|hazme un poema|escribe una canci[oó]n|redacta un ensayo|traduce al ingle[eé]s)\b',
+        r'\b(coche|mec[aá]nica|rueda de un coche|reparar motor|cambiar aceite del coche)\b',
+    ]
+
+    return any(re.search(pat, t) for pat in off_topic_patterns)
+
+
 def extract_ingredients(text: str) -> List[str]:
     """Extract list of ingredients from user message."""
     # Filter common conversational words

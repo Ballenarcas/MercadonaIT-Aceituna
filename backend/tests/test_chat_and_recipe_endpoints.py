@@ -43,6 +43,17 @@ def test_chat_with_recipe_name(client):
     assert "quantity" in item
     assert item["inCart"] is False
 
+def test_chat_off_topic_message(client):
+    res = client.post("/api/chat", json={"message": "Escribe un script en python para compilar código", "listId": "default"})
+    assert res.status_code == 200
+    data = res.json()
+    assert "reply" in data
+    assert "cocina" in data["reply"].lower() or "mercadona" in data["reply"].lower()
+    # It should not suggest recipes or return missing ingredients for off-topic requests
+    assert len(data.get("recipeSuggestions", [])) == 0
+    assert len(data.get("missingIngredients", [])) == 0
+    assert data.get("recipeName") is None
+
 def test_batch_create_items(client):
     payload = {
         "listId": "default",

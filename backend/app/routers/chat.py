@@ -37,6 +37,7 @@ from ..fuzzy_service import (
     search_recipe_by_name,
     extract_ingredients,
     is_giving_ingredients,
+    is_off_topic_message,
     get_recipes_from_db,
 )
 from .. import crud
@@ -92,6 +93,15 @@ def _strip_tables(text: str) -> str:
 
 SYSTEM_PROMPT = """\
 Eres un asistente de cocina y compras para Mercadona. Tu nombre es 'mercadITo' 🫒.
+
+PROPÓSITO Y LÍMITES ESTRICTOS (OBLIGATORIO):
+Tu ÚNICO propósito es ayudar al usuario con recetas, cocina, ingredientes, productos de alimentación y la gestión de la lista de la compra de Mercadona.
+Debes IGNORAR y RECHAZAR amablemente cualquier mensaje o petición que no esté directamente relacionado con este propósito (por ejemplo: preguntas de programación, código, deportes, política, actualidad, ciencia ajena a la cocina, matemáticas, tareas escolares, redacción de textos ajenos a la comida, entretenimiento general, etc.).
+- Si el usuario te pregunta o pide algo ajeno a la cocina o compras de supermercado:
+  * NO respondas a su pregunta ni cumplas su petición.
+  * Ignora completamente el tema no relacionado y no proporciones información sobre él.
+  * Responde de forma breve y cortés recordando que tu función se limita a recetas, ingredientes y la lista de la compra de Mercadona.
+  * Ejemplo: "Lo siento, como asistente de cocina y compras de Mercadona solo puedo ayudarte con recetas, ingredientes y tu lista de la compra 🫒. ¿Hay algún plato que te apetezca cocinar o algún producto que quieras buscar?"
 
 Funciones clave:
 1. Cuando el usuario te diga qué ingredientes tiene, busca y sugiere recetas posibles de la base de datos.
@@ -217,26 +227,29 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
     client = _get_client()
     model = os.getenv("GROQ_MODEL", GROQ_MODEL)
 
+    off_topic = is_off_topic_message(msg_text)
+
     # 1. Gather context from conversation history (e.g. ingredients previously mentioned)
     past_user_messages = [m.content for m in req.history if m.role == "user"]
     past_text = " ".join(past_user_messages)
     context_ingredients = extract_ingredients(past_text)
-    current_ingredients = extract_ingredients(msg_text)
+    current_ingredients = [] if off_topic else extract_ingredients(msg_text)
 
     recipe_match: Optional[Dict[str, Any]] = None
     suggested_recipes_data: List[Dict[str, Any]] = []
 
-    # 2. Decide if user is listing ingredients or requesting a recipe
-    if is_giving_ingredients(msg_text):
-        # User is listing ingredients: search recipes by ingredients
-        all_ings = list(dict.fromkeys(context_ingredients + current_ingredients))
-        suggested_recipes_data = search_recipes_by_ingredients(all_ings or current_ingredients, db)
-    else:
-        # User might be naming a recipe directly
-        recipe_match = search_recipe_by_name(msg_text, db, user_ingredients=context_ingredients)
-        if not recipe_match and current_ingredients:
-            # Fallback to ingredients matching if recipe name didn't match
-            suggested_recipes_data = search_recipes_by_ingredients(current_ingredients, db)
+    # 2. Decide if user is listing ingredients or requesting a recipe (only when on-topic)
+    if not off_topic:
+        if is_giving_ingredients(msg_text):
+            # User is listing ingredients: search recipes by ingredients
+            all_ings = list(dict.fromkeys(context_ingredients + current_ingredients))
+            suggested_recipes_data = search_recipes_by_ingredients(all_ings or current_ingredients, db)
+        else:
+            # User might be naming a recipe directly
+            recipe_match = search_recipe_by_name(msg_text, db, user_ingredients=context_ingredients)
+            if not recipe_match and current_ingredients:
+                # Fallback to ingredients matching if recipe name didn't match
+                suggested_recipes_data = search_recipes_by_ingredients(current_ingredients, db)
 
     # Prepare response containers
     recipe_suggestions: List[RecipeSuggestionItem] = []
@@ -282,7 +295,13 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
         try:
             # Build conversation history
             system_msg = SYSTEM_PROMPT
-            if recipe_match:
+            if off_topic:
+                system_msg += (
+                    "\nAVISO IMPORTANTE: El mensaje actual del usuario NO está relacionado con cocina, alimentación ni compras de Mercadona. "
+                    "Ignora la petición no relacionada y rechaza amablemente responder a ese tema, recordando brevemente que solo puedes ayudar con recetas, ingredientes y la lista de la compra de Mercadona. "
+                    "NO uses ninguna herramienta."
+                )
+            elif recipe_match:
                 system_msg += f"\nEl usuario ha seleccionado o pedido la receta: '{recipe_match['name']}' ({recipe_match['imageEmoji']}). Se le mostrarán {len(missing_ingredients)} ingredientes faltantes en la interfaz con checkboxes."
             elif suggested_recipes_data:
                 system_msg += f"\nSe han encontrado {len(suggested_recipes_data)} recetas en la base de datos que coinciden con los ingredientes del usuario: {', '.join(suggested_recipe_names)}."
@@ -291,107 +310,117 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
                 messages.append({"role": msg.role, "content": msg.content})
             messages.append({"role": "user", "content": req.message})
 
-            MAX_TOOL_ROUNDS = 4
-            for _ in range(MAX_TOOL_ROUNDS):
+            if off_topic:
+                # Off-topic: generate direct refusal without tool calls
                 completion = client.chat.completions.create(
                     model=model,
                     messages=messages,  # type: ignore
-                    tools=TOOLS,  # type: ignore
-                    tool_choice="auto",
-                    temperature=0.6,
-                    max_tokens=800,
-                )
-                assistant_msg = completion.choices[0].message
-                tool_calls = getattr(assistant_msg, "tool_calls", None) or []
-                if not tool_calls:
-                    reply_text = assistant_msg.content or ""
-                    break
-
-                messages.append(
-                    {
-                        "role": "assistant",
-                        "content": assistant_msg.content,
-                        "tool_calls": [
-                            {
-                                "id": tc.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tc.function.name,
-                                    "arguments": tc.function.arguments,
-                                },
-                            }
-                            for tc in tool_calls
-                        ],
-                    }
-                )
-
-                for tc in tool_calls:
-                    try:
-                        tool_args = json.loads(tc.function.arguments or "{}")
-                    except json.JSONDecodeError:
-                        tool_args = {}
-                    tool_result = _execute_tool(tc.function.name, tool_args, req.listId, db)
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tc.id,
-                            "name": tc.function.name,
-                            "content": tool_result,
-                        }
-                    )
-                    # Side effects from tools
-                    if tc.function.name == "search_recipes_by_ingredients":
-                        try:
-                            res_data = json.loads(tool_result)
-                            for r in res_data.get("recipes", []):
-                                if r["name"] not in suggested_recipe_names:
-                                    suggested_recipe_names.append(r["name"])
-                                    recipe_suggestions.append(
-                                        RecipeSuggestionItem(
-                                            id=r["id"],
-                                            name=r["name"],
-                                            imageEmoji=r["imageEmoji"],
-                                            matchScore=r["matchScore"],
-                                            matchedIngredients=r["matchedIngredients"],
-                                            missingCount=r["missingCount"],
-                                        )
-                                    )
-                        except Exception:
-                            pass
-                    elif tc.function.name == "get_recipe_ingredients":
-                        try:
-                            res_data = json.loads(tool_result)
-                            matched_recipe_name = res_data.get("name", matched_recipe_name)
-                            if not missing_ingredients:
-                                for m in res_data.get("missingIngredients", []):
-                                    missing_ingredients.append(
-                                        MissingIngredientItem(
-                                            name=m["name"],
-                                            quantity=m.get("quantity", 1.0),
-                                            unit=m.get("unit", "ud"),
-                                            categoryId=m.get("categoryId", "otros"),
-                                            brand=m.get("brand", "Hacendado"),
-                                            estimatedPrice=m.get("estimatedPrice"),
-                                            notes=f"De receta: {matched_recipe_name}",
-                                            inCart=False,
-                                        )
-                                    )
-                        except Exception:
-                            pass
-                    elif tc.function.name == "add_recipe_to_list":
-                        try:
-                            res_data = json.loads(tool_result)
-                            added_ingredients.extend(res_data.get("added", []))
-                        except Exception:
-                            pass
-            else:
-                completion = client.chat.completions.create(
-                    model=model,
-                    messages=messages,  # type: ignore
-                    temperature=0.6,
-                    max_tokens=800,
+                    temperature=0.3,
+                    max_tokens=300,
                 )
                 reply_text = completion.choices[0].message.content or ""
+            else:
+                MAX_TOOL_ROUNDS = 4
+                for _ in range(MAX_TOOL_ROUNDS):
+                    completion = client.chat.completions.create(
+                        model=model,
+                        messages=messages,  # type: ignore
+                        tools=TOOLS,  # type: ignore
+                        tool_choice="auto",
+                        temperature=0.6,
+                        max_tokens=800,
+                    )
+                    assistant_msg = completion.choices[0].message
+                    tool_calls = getattr(assistant_msg, "tool_calls", None) or []
+                    if not tool_calls:
+                        reply_text = assistant_msg.content or ""
+                        break
+
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": assistant_msg.content,
+                            "tool_calls": [
+                                {
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments,
+                                    },
+                                }
+                                for tc in tool_calls
+                            ],
+                        }
+                    )
+
+                    for tc in tool_calls:
+                        try:
+                            tool_args = json.loads(tc.function.arguments or "{}")
+                        except json.JSONDecodeError:
+                            tool_args = {}
+                        tool_result = _execute_tool(tc.function.name, tool_args, req.listId, db)
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc.id,
+                                "name": tc.function.name,
+                                "content": tool_result,
+                            }
+                        )
+                        # Side effects from tools
+                        if tc.function.name == "search_recipes_by_ingredients":
+                            try:
+                                res_data = json.loads(tool_result)
+                                for r in res_data.get("recipes", []):
+                                    if r["name"] not in suggested_recipe_names:
+                                        suggested_recipe_names.append(r["name"])
+                                        recipe_suggestions.append(
+                                            RecipeSuggestionItem(
+                                                id=r["id"],
+                                                name=r["name"],
+                                                imageEmoji=r["imageEmoji"],
+                                                matchScore=r["matchScore"],
+                                                matchedIngredients=r["matchedIngredients"],
+                                                missingCount=r["missingCount"],
+                                            )
+                                        )
+                            except Exception:
+                                pass
+                        elif tc.function.name == "get_recipe_ingredients":
+                            try:
+                                res_data = json.loads(tool_result)
+                                matched_recipe_name = res_data.get("name", matched_recipe_name)
+                                if not missing_ingredients:
+                                    for m in res_data.get("missingIngredients", []):
+                                        missing_ingredients.append(
+                                            MissingIngredientItem(
+                                                name=m["name"],
+                                                quantity=m.get("quantity", 1.0),
+                                                unit=m.get("unit", "ud"),
+                                                categoryId=m.get("categoryId", "otros"),
+                                                brand=m.get("brand", "Hacendado"),
+                                                estimatedPrice=m.get("estimatedPrice"),
+                                                notes=f"De receta: {matched_recipe_name}",
+                                                inCart=False,
+                                            )
+                                        )
+                            except Exception:
+                                pass
+                        elif tc.function.name == "add_recipe_to_list":
+                            try:
+                                res_data = json.loads(tool_result)
+                                added_ingredients.extend(res_data.get("added", []))
+                            except Exception:
+                                pass
+                else:
+                    completion = client.chat.completions.create(
+                        model=model,
+                        messages=messages,  # type: ignore
+                        temperature=0.6,
+                        max_tokens=800,
+                    )
+                    reply_text = completion.choices[0].message.content or ""
         except Exception as e:
             # Fallback when LLM encounters error (e.g. rate limit, network)
             print("Groq API error fallback:", e)
@@ -399,7 +428,13 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
 
     # 5. Deterministic fallback reply if LLM didn't return text
     if not reply_text:
-        if recipe_match:
+        if off_topic:
+            reply_text = (
+                "Lo siento, como asistente de cocina y compras de Mercadona solo puedo ayudarte "
+                "con recetas, ingredientes y la gestión de tu lista de la compra 🫒.\n\n"
+                "¿Hay alguna receta o producto que te gustaría consultar?"
+            )
+        elif recipe_match:
             reply_text = (
                 f"¡Perfecto! Para preparar **{recipe_match['name']}** {recipe_match['imageEmoji']}, "
                 f"aquí tienes los ingredientes de la base de datos de Mercadona.\n\n"
