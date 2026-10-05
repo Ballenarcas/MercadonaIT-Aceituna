@@ -2,6 +2,7 @@ import pytest
 from app.fuzzy_service import (
     extract_ingredients,
     is_giving_ingredients,
+    is_off_topic_message,
     search_recipes_by_ingredients,
     search_recipe_by_name,
     get_recipes_from_db,
@@ -46,3 +47,34 @@ def test_search_recipe_missing_with_user_ingredients(db_conn):
     assert not any("arroz" in m for m in missing_names)
     assert not any("tomate" in m for m in missing_names)
     assert any("aceite" in m or "sal" in m for m in missing_names)
+
+def test_is_off_topic_message():
+    # Clearly off-topic
+    assert is_off_topic_message("Escribe un script en python para ordenar listas") is True
+    assert is_off_topic_message("¿Quién ganó el mundial de fútbol?") is True
+    assert is_off_topic_message("Explícame cómo resolver una ecuación de segundo grado") is True
+    assert is_off_topic_message("¿Cuál es la capital de Francia?") is True
+    assert is_off_topic_message("Hazme un poema de amor") is True
+    assert is_off_topic_message("Cómo arreglar el motor de un coche") is True
+
+    # Insults & hostility must be identified as off-topic
+    assert is_off_topic_message("eres tonto") is True
+    assert is_off_topic_message("gilipollas") is True
+    assert is_off_topic_message("eres un inútil") is True
+    assert is_off_topic_message("vete a la mierda") is True
+    assert is_off_topic_message("callate bot de mierda") is True
+
+    # On-topic (culinary, food, groceries, shopping)
+    assert is_off_topic_message("Tengo arroz, tomate y huevos") is False
+    assert is_off_topic_message("Macarrones a la boloñesa") is False
+    assert is_off_topic_message("¿Cómo preparar pollo al horno?") is False
+    assert is_off_topic_message("Añade leche a la lista de la compra") is False
+    assert is_off_topic_message("Hola, ¿qué tal?") is False
+
+def test_search_recipe_by_name_does_not_match_insults(db_conn):
+    insults = ["tonto", "idiota", "imbecil", "gilipollas", "puta", "cabron", "mierda", "vete a la mierda", "eres gilipollas"]
+    for ins in insults:
+        match = search_recipe_by_name(ins, db_conn)
+        assert match is None, f"Insult '{ins}' should NOT match any recipe but matched '{match['name'] if match else ''}'"
+
+
