@@ -11,10 +11,12 @@ import { ItemCard } from './components/ItemCard';
 import { EmptyState } from './components/EmptyState';
 import { CatalogModal } from './components/CatalogModal';
 import { ShareModal } from './components/ShareModal';
+import { LandingPage } from './components/LandingPage';
 import { MapPin } from 'lucide-react';
 import type { ActiveTab } from './types';
 
 export function App() {
+  const [isShoppingAppOpen, setIsShoppingAppOpen] = useState(false);
   const {
     lists,
     activeList,
@@ -66,6 +68,10 @@ export function App() {
     setSelectedCategory('all');
     setFilterStatus('all');
   };
+
+  if (!isShoppingAppOpen) {
+    return <LandingPage onOpenMercadito={() => setIsShoppingAppOpen(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans">

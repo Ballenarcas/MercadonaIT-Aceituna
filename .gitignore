@@ -37,3 +37,6 @@ env/
 *.njsproj
 *.sln
 *.sw?
+
+.env
+!mercadITo_recetas.db
