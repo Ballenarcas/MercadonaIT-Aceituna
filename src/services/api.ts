@@ -1,4 +1,4 @@
-import type { ShoppingItem, Category, CatalogProduct, SortOption, ShoppingList } from '../types';
+import type { ShoppingItem, Category, CatalogProduct, SortOption, ShoppingList, Recipe, ChatMessage } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -12,7 +12,7 @@ export const api = {
     }
   },
 
-  // --- LISTS ---
+  // ── LISTS ──────────────────────────────────────────────────────────────────
   async getLists(): Promise<ShoppingList[]> {
     const res = await fetch(`${API_BASE_URL}/lists`);
     if (!res.ok) throw new Error(`Error al obtener listas: ${res.statusText}`);
@@ -46,7 +46,13 @@ export const api = {
     if (!res.ok) throw new Error(`Error al eliminar lista: ${res.statusText}`);
   },
 
-  // --- ITEMS ---
+  async getListJson(listId: string): Promise<object> {
+    const res = await fetch(`${API_BASE_URL}/lists/${listId}/json`);
+    if (!res.ok) throw new Error(`Error al obtener JSON de lista: ${res.statusText}`);
+    return res.json();
+  },
+
+  // ── ITEMS ──────────────────────────────────────────────────────────────────
   async getItems(params?: {
     listId?: string;
     inCart?: boolean;
@@ -121,32 +127,24 @@ export const api = {
 
   async clearCompleted(listId?: string): Promise<void> {
     const url = listId ? `${API_BASE_URL}/items/completed?list_id=${listId}` : `${API_BASE_URL}/items/completed`;
-    const res = await fetch(url, {
-      method: 'DELETE',
-    });
+    const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Error al limpiar completados: ${res.statusText}`);
   },
 
   async clearCart(listId?: string): Promise<void> {
     const url = listId ? `${API_BASE_URL}/lists/${listId}/cart` : `${API_BASE_URL}/items/completed`;
-    const res = await fetch(url, {
-      method: 'DELETE',
-    });
+    const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Error al vaciar carrito: ${res.statusText}`);
   },
 
   async moveAllToCart(listId: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/lists/${listId}/move-all-to-cart`, {
-      method: 'POST',
-    });
+    const res = await fetch(`${API_BASE_URL}/lists/${listId}/move-all-to-cart`, { method: 'POST' });
     if (!res.ok) throw new Error(`Error al mover todo al carrito: ${res.statusText}`);
   },
 
   async resetSample(listId?: string): Promise<ShoppingItem[]> {
     const url = listId ? `${API_BASE_URL}/items/reset-sample?list_id=${listId}` : `${API_BASE_URL}/items/reset-sample`;
-    const res = await fetch(url, {
-      method: 'POST',
-    });
+    const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error(`Error al restaurar ejemplos: ${res.statusText}`);
     return res.json();
   },
@@ -173,5 +171,64 @@ export const api = {
     if (!res.ok) throw new Error(`Error al generar texto: ${res.statusText}`);
     const data = await res.json();
     return data.shareText;
+  },
+
+  // ── RECIPES ────────────────────────────────────────────────────────────────
+  async getRecipes(params?: { search?: string; category?: string }): Promise<Recipe[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.append('search', params.search);
+    if (params?.category && params.category !== 'all') searchParams.append('category', params.category);
+    const res = await fetch(`${API_BASE_URL}/recipes?${searchParams.toString()}`);
+    if (!res.ok) throw new Error(`Error al obtener recetas: ${res.statusText}`);
+    return res.json();
+  },
+
+  async getRecipe(id: string): Promise<Recipe> {
+    const res = await fetch(`${API_BASE_URL}/recipes/${id}`);
+    if (!res.ok) throw new Error(`Receta no encontrada`);
+    return res.json();
+  },
+
+  async createRecipe(recipe: Omit<Recipe, 'id' | 'createdAt'>): Promise<Recipe> {
+    const res = await fetch(`${API_BASE_URL}/recipes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(recipe),
+    });
+    if (!res.ok) throw new Error(`Error al crear receta: ${res.statusText}`);
+    return res.json();
+  },
+
+  async deleteRecipe(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/recipes/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Error al eliminar receta: ${res.statusText}`);
+  },
+
+  async addRecipeToList(
+    recipeId: string,
+    opts: { listId: string; servings?: number; skipOptional?: boolean },
+  ): Promise<ShoppingItem[]> {
+    const res = await fetch(`${API_BASE_URL}/recipes/${recipeId}/add-to-list`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listId: opts.listId, servings: opts.servings, skipOptional: opts.skipOptional ?? false }),
+    });
+    if (!res.ok) throw new Error(`Error al añadir receta a lista: ${res.statusText}`);
+    return res.json();
+  },
+
+  // ── AI CHAT ────────────────────────────────────────────────────────────────
+  async sendChatMessage(
+    message: string,
+    listId: string,
+    history: ChatMessage[],
+  ): Promise<{ reply: string; addedIngredients: string[]; suggestedRecipes: string[] }> {
+    const res = await fetch(`${API_BASE_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, listId, history }),
+    });
+    if (!res.ok) throw new Error(`Error en el chat: ${res.statusText}`);
+    return res.json();
   },
 };

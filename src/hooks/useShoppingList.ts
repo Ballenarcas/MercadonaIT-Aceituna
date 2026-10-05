@@ -355,6 +355,18 @@ export function useShoppingList() {
     ]);
   };
 
+  /** Re-fetch all items from the backend (e.g. after the AI adds recipe ingredients) */
+  const refreshItems = useCallback(async () => {
+    if (!isBackendConnected) return;
+    try {
+      const remoteItems = await api.getItems();
+      if (remoteItems) setItems(remoteItems);
+    } catch (e) {
+      console.error('Error refreshing items from backend', e);
+    }
+  }, [isBackendConnected]);
+
+
   // Stats calculation
   const stats = useMemo(() => {
     const totalItems = activeListAllItems.length;
@@ -548,6 +560,7 @@ export function useShoppingList() {
     clearCart,
     clearAllList,
     resetToSample,
+    refreshItems,
     generateWhatsAppShareText,
   };
 }

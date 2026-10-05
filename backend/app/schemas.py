@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from pydantic import BaseModel, ConfigDict, Field
 
 BrandType = Literal['Hacendado', 'Bosque Verde', 'Deliplus', 'Compy', 'General']
@@ -102,3 +102,83 @@ class BudgetStatsResponse(BaseModel):
 
 class ShareTextResponse(BaseModel):
     shareText: str
+
+# ── Recipes ──────────────────────────────────────────────────────────────────
+
+class RecipeIngredientBase(BaseModel):
+    name: str
+    quantity: float = Field(default=1.0)
+    unit: UnitType = Field(default="ud")
+    categoryId: str = Field(default="otros", alias="categoryId")
+    estimatedPrice: Optional[float] = Field(default=None, alias="estimatedPrice")
+    isOptional: bool = Field(default=False, alias="isOptional")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class RecipeIngredientCreate(RecipeIngredientBase):
+    pass
+
+class RecipeIngredientResponse(RecipeIngredientBase):
+    id: str
+    recipeId: str = Field(alias="recipeId")
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class RecipeBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    category: str = Field(default="general")
+    servings: int = Field(default=2)
+    prepTimeMin: int = Field(default=30, alias="prepTimeMin")
+    imageEmoji: str = Field(default="🍽️", alias="imageEmoji")
+    tags: str = Field(default="")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class RecipeCreate(RecipeBase):
+    ingredients: List[RecipeIngredientCreate] = Field(default_factory=list)
+
+class RecipeUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    servings: Optional[int] = None
+    prepTimeMin: Optional[int] = Field(default=None, alias="prepTimeMin")
+    imageEmoji: Optional[str] = Field(default=None, alias="imageEmoji")
+    tags: Optional[str] = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class RecipeResponse(RecipeBase):
+    id: str
+    ingredients: List[RecipeIngredientResponse] = Field(default_factory=list)
+    createdAt: int = Field(alias="createdAt")
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class AddRecipeToListRequest(BaseModel):
+    listId: str = Field(default="default", alias="listId")
+    servings: Optional[int] = None   # scale ingredients for N servings (default = recipe.servings)
+    skipOptional: bool = Field(default=False, alias="skipOptional")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+# ── AI Chat ───────────────────────────────────────────────────────────────────
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    listId: str = Field(default="default", alias="listId")
+    history: List[ChatMessage] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class ChatResponse(BaseModel):
+    reply: str
+    addedIngredients: List[str] = Field(default_factory=list, alias="addedIngredients")
+    suggestedRecipes: List[str] = Field(default_factory=list, alias="suggestedRecipes")
+
+    model_config = ConfigDict(populate_by_name=True)

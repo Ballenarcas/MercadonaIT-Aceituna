@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .database import init_db, get_connection
 from .crud import seed_sample_data, get_items
-from .routers import items, categories, catalog, lists
+from .routers import items, categories, catalog, lists, recipes, chat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Backend API en FastAPI para la lista de la compra de Mercadona con separación de listas y carrito.",
+    description="Backend API en FastAPI para la lista de la compra de Mercadona con recetas y chatbot IA.",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc"
@@ -45,6 +45,8 @@ app.include_router(lists.router, prefix=settings.API_V1_STR)
 app.include_router(items.router, prefix=settings.API_V1_STR)
 app.include_router(categories.router, prefix=settings.API_V1_STR)
 app.include_router(catalog.router, prefix=settings.API_V1_STR)
+app.include_router(recipes.router, prefix=settings.API_V1_STR)
+app.include_router(chat.router, prefix=settings.API_V1_STR)
 
 @app.get("/", tags=["Health"])
 def health_check():

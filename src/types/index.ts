@@ -52,6 +52,45 @@ export interface CatalogProduct {
   popular?: boolean;
 }
 
+// ── Recipes ───────────────────────────────────────────────────────────────────
+
+export interface RecipeIngredient {
+  id: string;
+  recipeId: string;
+  name: string;
+  quantity: number;
+  unit: Unit;
+  categoryId: string;
+  estimatedPrice?: number;
+  isOptional: boolean;
+}
+
+export interface Recipe {
+  id: string;
+  name: string;
+  description?: string;
+  category: string;
+  servings: number;
+  prepTimeMin: number;
+  imageEmoji: string;
+  tags: string;
+  ingredients: RecipeIngredient[];
+  createdAt: number;
+}
+
+export type RecipeCategory = 'all' | 'desayuno' | 'comida' | 'cena' | 'postre' | 'snack' | 'general';
+
+// ── AI Chat ───────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  addedIngredients?: string[];
+  suggestedRecipes?: string[];
+}
+
+// ── UI State ──────────────────────────────────────────────────────────────────
+
 export type SortOption = 'aisle' | 'name' | 'price-asc' | 'price-desc' | 'created';
 export type FilterStatus = 'all' | 'pending' | 'completed';
-export type ActiveTab = 'lists' | 'list' | 'cart';
+export type ActiveTab = 'lists' | 'list' | 'cart' | 'recipes';

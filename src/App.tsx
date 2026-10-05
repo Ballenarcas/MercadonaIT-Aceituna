@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useShoppingList } from './hooks/useShoppingList';
 import { Header } from './components/Header';
 import { NavigationTabs } from './components/NavigationTabs';
 import { ListsView } from './components/ListsView';
 import { CartView } from './components/CartView';
+import { RecipesView } from './components/RecipesView';
+import { ChatBot } from './components/ChatBot';
 import { BudgetSummary } from './components/BudgetSummary';
 import { QuickAddBar } from './components/QuickAddBar';
 import { FilterBar } from './components/FilterBar';
@@ -52,6 +54,7 @@ export function App() {
     clearCart,
     resetToSample,
     generateWhatsAppShareText,
+    refreshItems,
   } = useShoppingList();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('list');
@@ -66,6 +69,12 @@ export function App() {
     setSelectedCategory('all');
     setFilterStatus('all');
   };
+
+  // Refresh items when recipe ingredients are added by RecipesView or ChatBot
+  const handleIngredientAdded = useCallback(() => {
+    refreshItems();
+    setActiveTab('list');
+  }, [refreshItems]);
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
@@ -82,7 +91,7 @@ export function App() {
         onOpenListsTab={() => setActiveTab('lists')}
       />
 
-      {/* Navigation Tabs (Listas / Lista Activa / Carrito) */}
+      {/* Navigation Tabs */}
       <NavigationTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -95,6 +104,7 @@ export function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6">
+
         {/* TAB 1: APARTADO DE LISTAS */}
         {activeTab === 'lists' && (
           <ListsView
@@ -246,7 +256,7 @@ export function App() {
           </div>
         )}
 
-        {/* TAB 3: CARRITO DE LA COMPRA (PRODUCTOS COGIDOS EN TIENDA) */}
+        {/* TAB 3: CARRITO DE LA COMPRA */}
         {activeTab === 'cart' && (
           <CartView
             cartItems={filteredCartItems}
@@ -262,12 +272,20 @@ export function App() {
             onOpenShare={() => setIsShareOpen(true)}
           />
         )}
+
+        {/* TAB 4: RECETAS */}
+        {activeTab === 'recipes' && (
+          <RecipesView
+            activeList={activeList}
+            onIngredientAdded={handleIngredientAdded}
+          />
+        )}
       </main>
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 mt-auto">
         <p>
-          Mercadona Shopping List App · Separación de Listas y Carrito · React + FastAPI
+          Mercadona Shopping List · React + FastAPI · AceitunAI 🫒
         </p>
       </footer>
 
@@ -283,6 +301,12 @@ export function App() {
         onClose={() => setIsShareOpen(false)}
         shareText={generateWhatsAppShareText()}
         items={pendingListItems.concat(cartItems)}
+      />
+
+      {/* Floating AI Chatbot */}
+      <ChatBot
+        activeList={activeList}
+        onIngredientAdded={handleIngredientAdded}
       />
     </div>
   );

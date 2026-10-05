@@ -62,6 +62,36 @@ def init_db():
             VALUES (?, ?, ?, ?, 0, ?)
         """, ('list-2', 'Barbacoa fin de semana', '🥩', '#ea580c', now + 1000))
 
+    # 4. Create recipes table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS recipes (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        category TEXT NOT NULL DEFAULT 'general',
+        servings INTEGER NOT NULL DEFAULT 2,
+        prep_time_min INTEGER NOT NULL DEFAULT 30,
+        image_emoji TEXT NOT NULL DEFAULT '🍽️',
+        tags TEXT DEFAULT '',
+        created_at INTEGER NOT NULL
+    );
+    """)
+
+    # 5. Create recipe_ingredients table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS recipe_ingredients (
+        id TEXT PRIMARY KEY,
+        recipe_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        quantity REAL NOT NULL DEFAULT 1.0,
+        unit TEXT NOT NULL DEFAULT 'ud',
+        category_id TEXT NOT NULL DEFAULT 'otros',
+        estimated_price REAL,
+        is_optional INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+    );
+    """)
+
     conn.commit()
     conn.close()
 

@@ -9,7 +9,13 @@ from .schemas import (
     BudgetStatsResponse,
     ShoppingListCreate,
     ShoppingListUpdate,
-    ShoppingListResponse
+    ShoppingListResponse,
+    RecipeCreate,
+    RecipeUpdate,
+    RecipeResponse,
+    RecipeIngredientResponse,
+    RecipeIngredientCreate,
+    AddRecipeToListRequest,
 )
 from .initial_data import INITIAL_SAMPLE_ITEMS, MERCADONA_CATEGORIES
 
@@ -374,3 +380,182 @@ def calculate_stats(conn: sqlite3.Connection, list_id: Optional[str] = None) -> 
         cartEstimated=round(cart_estimated, 2),
         progressPercentage=progress
     )
+
+
+# ── RECIPES CRUD ──────────────────────────────────────────────────────────────
+
+def _row_to_ingredient(row: sqlite3.Row) -> RecipeIngredientResponse:
+    return RecipeIngredientResponse(
+        id=row["id"],
+        recipeId=row["recipe_id"],
+        name=row["name"],
+        quantity=float(row["quantity"]),
+        unit=row["unit"],  # type: ignore
+        categoryId=row["category_id"],
+        estimatedPrice=float(row["estimated_price"]) if row["estimated_price"] is not None else None,
+        isOptional=bool(row["is_optional"]),
+    )
+
+def _get_recipe_ingredients(conn: sqlite3.Connection, recipe_id: str) -> List[RecipeIngredientResponse]:
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM recipe_ingredients WHERE recipe_id = ? ORDER BY rowid", (recipe_id,))
+    return [_row_to_ingredient(r) for r in cursor.fetchall()]
+
+def _row_to_recipe(conn: sqlite3.Connection, row: sqlite3.Row) -> RecipeResponse:
+    ingredients = _get_recipe_ingredients(conn, row["id"])
+    return RecipeResponse(
+        id=row["id"],
+        name=row["name"],
+        description=row["description"],
+        category=row["category"],
+        servings=int(row["servings"]),
+        prepTimeMin=int(row["prep_time_min"]),
+        imageEmoji=row["image_emoji"],
+        tags=row["tags"] or "",
+        ingredients=ingredients,
+        createdAt=int(row["created_at"]),
+    )
+
+def get_recipes(conn: sqlite3.Connection, search: Optional[str] = None, category: Optional[str] = None) -> List[RecipeResponse]:
+    cursor = conn.cursor()
+    query = "SELECT * FROM recipes WHERE 1=1"
+    params: List[Any] = []
+    if search:
+        query += " AND (LOWER(name) LIKE ? OR LOWER(IFNULL(description,'')) LIKE ? OR LOWER(tags) LIKE ?)"
+        s = f"%{search.lower()}%"
+        params.extend([s, s, s])
+    if category and category != "all":
+        query += " AND category = ?"
+        params.append(category)
+    query += " ORDER BY created_at DESC"
+    cursor.execute(query, params)
+    return [_row_to_recipe(conn, r) for r in cursor.fetchall()]
+
+def get_recipe(conn: sqlite3.Connection, recipe_id: str) -> Optional[RecipeResponse]:
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,))
+    row = cursor.fetchone()
+    if not row:
+        return None
+    return _row_to_recipe(conn, row)
+
+def create_recipe(conn: sqlite3.Connection, recipe_in: RecipeCreate) -> RecipeResponse:
+    new_id = f"recipe_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
+    now = int(time.time() * 1000)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO recipes (id, name, description, category, servings, prep_time_min, image_emoji, tags, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (new_id, recipe_in.name, recipe_in.description, recipe_in.category,
+          recipe_in.servings, recipe_in.prepTimeMin, recipe_in.imageEmoji, recipe_in.tags, now))
+
+    for ing in recipe_in.ingredients:
+        ing_id = f"ing_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
+        cursor.execute("""
+            INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, category_id, estimated_price, is_optional)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (ing_id, new_id, ing.name, ing.quantity, ing.unit, ing.categoryId,
+              ing.estimatedPrice, 1 if ing.isOptional else 0))
+    conn.commit()
+    return get_recipe(conn, new_id)  # type: ignore
+
+def update_recipe(conn: sqlite3.Connection, recipe_id: str, recipe_in: RecipeUpdate) -> Optional[RecipeResponse]:
+    if not get_recipe(conn, recipe_id):
+        return None
+    update_dict = recipe_in.model_dump(exclude_unset=True)
+    mapping = {
+        "name": "name", "description": "description", "category": "category",
+        "servings": "servings", "prepTimeMin": "prep_time_min",
+        "imageEmoji": "image_emoji", "tags": "tags",
+    }
+    clauses, params = [], []
+    for k, v in update_dict.items():
+        if k in mapping:
+            clauses.append(f"{mapping[k]} = ?")
+            params.append(v)
+    if clauses:
+        params.append(recipe_id)
+        conn.cursor().execute(f"UPDATE recipes SET {', '.join(clauses)} WHERE id = ?", params)
+        conn.commit()
+    return get_recipe(conn, recipe_id)
+
+def delete_recipe(conn: sqlite3.Connection, recipe_id: str) -> bool:
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM recipe_ingredients WHERE recipe_id = ?", (recipe_id,))
+    cursor.execute("DELETE FROM recipes WHERE id = ?", (recipe_id,))
+    conn.commit()
+    return cursor.rowcount > 0
+
+def add_recipe_to_list(
+    conn: sqlite3.Connection,
+    recipe_id: str,
+    req: AddRecipeToListRequest,
+) -> List[ShoppingItemResponse]:
+    """Add all (or non-optional) recipe ingredients as shopping items to a list."""
+    recipe = get_recipe(conn, recipe_id)
+    if not recipe:
+        return []
+
+    scale = (req.servings / recipe.servings) if req.servings and recipe.servings else 1.0
+    added: List[ShoppingItemResponse] = []
+    now = int(time.time() * 1000)
+
+    for idx, ing in enumerate(recipe.ingredients):
+        if req.skipOptional and ing.isOptional:
+            continue
+        item_id = f"item_{now + idx}_{uuid.uuid4().hex[:6]}"
+        scaled_qty = round(ing.quantity * scale, 2)
+        conn.cursor().execute("""
+            INSERT INTO shopping_items
+                (id, list_id, name, category_id, brand, quantity, unit, estimated_price, notes, completed, in_cart, priority, created_at)
+            VALUES (?, ?, ?, ?, 'General', ?, ?, ?, ?, 0, 0, 'media', ?)
+        """, (
+            item_id, req.listId, ing.name, ing.categoryId,
+            scaled_qty, ing.unit, ing.estimatedPrice,
+            f"De receta: {recipe.name}", now + idx,
+        ))
+        conn.commit()
+        item = get_item(conn, item_id)
+        if item:
+            added.append(item)
+
+    return added
+
+def get_list_as_json(conn: sqlite3.Connection, list_id: str) -> Dict[str, Any]:
+    """Returns the full list in structured JSON format, ready for AI consumption."""
+    lst = get_list(conn, list_id)
+    if not lst:
+        return {}
+    items = get_items(conn, list_id=list_id)
+    pending = [i for i in items if not i.inCart]
+    in_cart = [i for i in items if i.inCart]
+
+    def item_to_dict(i: ShoppingItemResponse) -> Dict[str, Any]:
+        return {
+            "id": i.id,
+            "name": i.name,
+            "quantity": i.quantity,
+            "unit": i.unit,
+            "categoryId": i.categoryId,
+            "estimatedPrice": i.estimatedPrice,
+            "notes": i.notes,
+            "priority": i.priority,
+            "inCart": i.inCart,
+        }
+
+    return {
+        "list": {
+            "id": lst.id,
+            "name": lst.name,
+            "emoji": lst.emoji,
+        },
+        "summary": {
+            "totalItems": len(items),
+            "pendingCount": len(pending),
+            "inCartCount": len(in_cart),
+            "totalEstimated": lst.totalEstimated,
+            "cartEstimated": lst.cartEstimated,
+        },
+        "pending": [item_to_dict(i) for i in pending],
+        "inCart": [item_to_dict(i) for i in in_cart],
+    }
