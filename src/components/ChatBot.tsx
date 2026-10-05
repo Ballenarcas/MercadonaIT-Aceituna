@@ -87,7 +87,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ activeList, onIngredientAdded 
         ...prev,
         {
           role: 'assistant',
-          content: `❌ ${errorMessage}\n\nAsegúrate de que el backend está activo y que la variable **GEMINI_API_KEY** está configurada.`,
+          content: `❌ ${errorMessage}\n\nAsegúrate de que el backend está activo y que la variable **GROQ_API_KEY** está configurada.`,
         },
       ]);
     } finally {
