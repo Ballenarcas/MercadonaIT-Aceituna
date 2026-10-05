@@ -39,3 +39,4 @@ env/
 *.sw?
 
 .env
+!mercadITo_recetas.db
