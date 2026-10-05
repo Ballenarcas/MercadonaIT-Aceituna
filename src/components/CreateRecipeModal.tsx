@@ -7,6 +7,7 @@ interface CreateRecipeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (recipe: Recipe) => void;
+  availableProducts?: string[];
   recipeToEdit?: Recipe | null;
   onUpdated?: (recipe: Recipe) => void;
 }
@@ -19,6 +20,7 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
   isOpen,
   onClose,
   onCreated,
+  availableProducts = [],
   recipeToEdit,
   onUpdated,
 }) => {
@@ -38,6 +40,12 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
   const [error, setError] = useState('');
 
   const isEditing = Boolean(recipeToEdit);
+  const catalogProducts = Array.from(
+    new Set([
+      ...availableProducts,
+      ...(recipeToEdit?.ingredients ?? []).map((ingredient) => ingredient.name),
+    ])
+  ).filter(Boolean);
 
   useEffect(() => {
     if (recipeToEdit) {
@@ -409,13 +417,19 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {ingredients.map((ing, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Ingrediente (ej: Arroz redondo)"
+                  <select
+                    required
                     value={ing.name}
                     onChange={(e) => handleIngredientChange(idx, 'name', e.target.value)}
-                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#00703c]"
-                  />
+                    className="flex-1 min-w-0 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#00703c]"
+                  >
+                    <option value="">Selecciona un ingrediente</option>
+                    {catalogProducts.map((product) => (
+                      <option key={product} value={product}>
+                        {product}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     type="number"
                     min="0.1"

@@ -1080,6 +1080,7 @@ function App() {
           setRecipeToEdit(null);
         }}
         onCreated={handleRecipeCreated}
+        availableProducts={availableProducts}
         recipeToEdit={recipeToEdit}
         onUpdated={handleRecipeUpdated}
       />

@@ -74,24 +74,6 @@ SEED_RECIPES = [
         ],
     },
     {
-        "id": "recipe-tortilla-patata",
-        "name": "Tortilla de patata con cebolla",
-        "description": "Tortilla jugosa de patata y cebolla para compartir.",
-        "category": "cena",
-        "servings": 4,
-        "prep_time_min": 45,
-        "image_emoji": "🍳",
-        "tags": "huevos,tradicional,española",
-        "user_id": "user-marta",
-        "ingredients": [
-            ("Patata", 0.8, "kg", "fruta-verdura", 1.55, 0),
-            ("Huevos camperos", 1, "docena", "lacteos-huevos", 3.35, 0),
-            ("Cebolla", 0.2, "kg", "fruta-verdura", 2.00, 1),
-            ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
-            ("Sal fina", 1, "ud", "despensa-conservas", 0.35, 0),
-        ],
-    },
-    {
         "id": "recipe-lentejas-verduras",
         "name": "Lentejas guisadas con verduras",
         "description": "Guiso casero de lentejas, zanahoria, tomate y pimiento.",
@@ -218,6 +200,13 @@ def init_db(seed: bool = False):
     );
     """)
 
+    # Remove the retired community recipe and its ingredients from existing databases.
+    cursor.execute("DELETE FROM recipe_ingredients WHERE recipe_id = ?", ("recipe-tortilla-patata",))
+    cursor.execute(
+        "DELETE FROM recipes WHERE id = ? OR lower(name) = ?",
+        ("recipe-tortilla-patata", "tortilla de patata con cebolla"),
+    )
+
     # Migrate quantities created before the API unit enum was restricted.
     cursor.execute("UPDATE recipe_ingredients SET unit = 'g' WHERE unit = 'ml'")
 
@@ -250,6 +239,13 @@ def init_db(seed: bool = False):
         PRIMARY KEY (receta_id, producto_id)
     );
     """)
+
+    cursor.execute(
+        "DELETE FROM receta_ingredientes WHERE receta_id IN "
+        "(SELECT id FROM recetas WHERE lower(nombre) = ?)",
+        ("tortilla de patata con cebolla",),
+    )
+    cursor.execute("DELETE FROM recetas WHERE lower(nombre) = ?", ("tortilla de patata con cebolla",))
 
     # Seed productos, recetas, and recipe data if empty (solo con seed=True,
     # para no hacer escrituras pesadas en cada import).
