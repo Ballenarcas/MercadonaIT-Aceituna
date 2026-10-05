@@ -57,10 +57,24 @@ def test_is_off_topic_message():
     assert is_off_topic_message("Hazme un poema de amor") is True
     assert is_off_topic_message("Cómo arreglar el motor de un coche") is True
 
+    # Insults & hostility must be identified as off-topic
+    assert is_off_topic_message("eres tonto") is True
+    assert is_off_topic_message("gilipollas") is True
+    assert is_off_topic_message("eres un inútil") is True
+    assert is_off_topic_message("vete a la mierda") is True
+    assert is_off_topic_message("callate bot de mierda") is True
+
     # On-topic (culinary, food, groceries, shopping)
     assert is_off_topic_message("Tengo arroz, tomate y huevos") is False
     assert is_off_topic_message("Macarrones a la boloñesa") is False
     assert is_off_topic_message("¿Cómo preparar pollo al horno?") is False
     assert is_off_topic_message("Añade leche a la lista de la compra") is False
     assert is_off_topic_message("Hola, ¿qué tal?") is False
+
+def test_search_recipe_by_name_does_not_match_insults(db_conn):
+    insults = ["tonto", "idiota", "imbecil", "gilipollas", "puta", "cabron", "mierda", "vete a la mierda", "eres gilipollas"]
+    for ins in insults:
+        match = search_recipe_by_name(ins, db_conn)
+        assert match is None, f"Insult '{ins}' should NOT match any recipe but matched '{match['name'] if match else ''}'"
+
 

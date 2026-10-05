@@ -49,10 +49,29 @@ def test_chat_off_topic_message(client):
     data = res.json()
     assert "reply" in data
     assert "cocina" in data["reply"].lower() or "mercadona" in data["reply"].lower()
-    # It should not suggest recipes or return missing ingredients for off-topic requests
+    # It must NOT suggest any recipes or ingredients in any field or text
     assert len(data.get("recipeSuggestions", [])) == 0
+    assert len(data.get("suggestedRecipes", [])) == 0
     assert len(data.get("missingIngredients", [])) == 0
+    assert len(data.get("addedIngredients", [])) == 0
     assert data.get("recipeName") is None
+    # Reply text must not suggest recipes or ingredients
+    reply_lower = data["reply"].lower()
+    for forbidden in ["macarrones", "tortilla", "boloñesa", "arroz a la cubana", "pollo al horno"]:
+        assert forbidden not in reply_lower
+
+def test_chat_insult_does_not_suggest_macarrones_or_ingredients(client):
+    insults = ["gilipollas", "eres tonto", "eres un inútil", "vete a la mierda", "cabrón"]
+    for ins in insults:
+        res = client.post("/api/chat", json={"message": ins, "listId": "default"})
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data.get("recipeSuggestions", [])) == 0, f"Insult '{ins}' returned recipe suggestions"
+        assert len(data.get("missingIngredients", [])) == 0, f"Insult '{ins}' returned missing ingredients"
+        assert data.get("recipeName") is None, f"Insult '{ins}' returned recipeName '{data.get('recipeName')}'"
+        reply_lower = data["reply"].lower()
+        for forbidden in ["macarrones", "boloñesa", "tomate frito", "carne picada"]:
+            assert forbidden not in reply_lower, f"Insult '{ins}' mentioned '{forbidden}' in reply"
 
 def test_batch_create_items(client):
     payload = {

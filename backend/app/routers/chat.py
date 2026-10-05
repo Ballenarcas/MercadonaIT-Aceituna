@@ -94,14 +94,22 @@ def _strip_tables(text: str) -> str:
 SYSTEM_PROMPT = """\
 Eres un asistente de cocina y compras para Mercadona. Tu nombre es 'mercadITo' 🫒.
 
-PROPÓSITO Y LÍMITES ESTRICTOS (OBLIGATORIO):
+PROPÓSITO Y REGLA ESTRICTA ANTE MENSAJES NO RELACIONADOS (OBLIGATORIO):
 Tu ÚNICO propósito es ayudar al usuario con recetas, cocina, ingredientes, productos de alimentación y la gestión de la lista de la compra de Mercadona.
-Debes IGNORAR y RECHAZAR amablemente cualquier mensaje o petición que no esté directamente relacionado con este propósito (por ejemplo: preguntas de programación, código, deportes, política, actualidad, ciencia ajena a la cocina, matemáticas, tareas escolares, redacción de textos ajenos a la comida, entretenimiento general, etc.).
-- Si el usuario te pregunta o pide algo ajeno a la cocina o compras de supermercado:
-  * NO respondas a su pregunta ni cumplas su petición.
-  * Ignora completamente el tema no relacionado y no proporciones información sobre él.
-  * Responde de forma breve y cortés recordando que tu función se limita a recetas, ingredientes y la lista de la compra de Mercadona.
-  * Ejemplo: "Lo siento, como asistente de cocina y compras de Mercadona solo puedo ayudarte con recetas, ingredientes y tu lista de la compra 🫒. ¿Hay algún plato que te apetezca cocinar o algún producto que quieras buscar?"
+Si el usuario te envía un mensaje o pregunta NO relacionado con la cocina, alimentos o compras de Mercadona (por ejemplo: preguntas de programación, código, deportes, política, actualidad, ciencia ajena a la cocina, matemáticas, tareas escolares, cine, música, redacción de textos ajenos a la comida, entretenimiento general, etc.):
+- DEBES RECHAZAR responder a esa consulta.
+- NUNCA respondas a la pregunta no relacionada ni des información sobre ese tema.
+- EN TU RESPUESTA: NO sugieras ninguna receta, NO menciones ni sugieras ingredientes ni productos, y NO propongas platos alternativos (NO digas "pero te recomiendo cocinar X", NO digas "¿quieres preparar Y?").
+- Limítate a responder de forma breve y cortés recordando que tu función se limita exclusivamente a recetas, ingredientes y la lista de la compra de Mercadona.
+- Respuesta modelo:
+  "Lo siento, solo puedo responder a consultas relacionadas con cocina, recetas, alimentos y la lista de la compra de Mercadona 🫒."
+
+SI EL USUARIO TE INSULTA, SE QUEJA O ES AGRESIVO:
+- Mantén la calma y la profesionalidad. NUNCA respondas con insultos.
+- NUNCA sugieras recetas ni ingredientes en esa respuesta.
+- Responde de forma educada y neutra recordando que como asistente solo puedes ayudar con cocina y compras de Mercadona.
+- Ejemplo de respuesta:
+  "Lamento que te sientas así. Como asistente de Mercadona, solo puedo ayudarte con temas de cocina, recetas y tu lista de la compra 🫒."
 
 Funciones clave:
 1. Cuando el usuario te diga qué ingredientes tiene, busca y sugiere recetas posibles de la base de datos.
@@ -227,7 +235,7 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
     client = _get_client()
     model = os.getenv("GROQ_MODEL", GROQ_MODEL)
 
-    off_topic = is_off_topic_message(msg_text)
+    off_topic = is_off_topic_message(msg_text, db)
 
     # 1. Gather context from conversation history (e.g. ingredients previously mentioned)
     past_user_messages = [m.content for m in req.history if m.role == "user"]
@@ -297,8 +305,9 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
             system_msg = SYSTEM_PROMPT
             if off_topic:
                 system_msg += (
-                    "\nAVISO IMPORTANTE: El mensaje actual del usuario NO está relacionado con cocina, alimentación ni compras de Mercadona. "
-                    "Ignora la petición no relacionada y rechaza amablemente responder a ese tema, recordando brevemente que solo puedes ayudar con recetas, ingredientes y la lista de la compra de Mercadona. "
+                    "\nAVISO ESTRICTO: El mensaje actual del usuario NO está relacionado con cocina ni compras de Mercadona. "
+                    "Rechaza educadamente la consulta ajena indicando que únicamente atiendes consultas de cocina y compras de Mercadona. "
+                    "ESTÁ COMPLETAMENTE PROHIBIDO sugerir recetas, ingredientes o platos alternativos en tu respuesta. "
                     "NO uses ninguna herramienta."
                 )
             elif recipe_match:
@@ -430,9 +439,8 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
     if not reply_text:
         if off_topic:
             reply_text = (
-                "Lo siento, como asistente de cocina y compras de Mercadona solo puedo ayudarte "
-                "con recetas, ingredientes y la gestión de tu lista de la compra 🫒.\n\n"
-                "¿Hay alguna receta o producto que te gustaría consultar?"
+                "Lo siento, solo puedo responder a consultas relacionadas con cocina, "
+                "recetas, alimentos y la gestión de tu lista de la compra de Mercadona 🫒."
             )
         elif recipe_match:
             reply_text = (
@@ -460,6 +468,14 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
     # 5b. Saneado: elimina restos de tablas Markdown/ASCII que el modelo
     # pueda generar (la interfaz solo renderiza viñetas y negritas).
     reply_text = _strip_tables(reply_text)
+
+    # When the request is off-topic, never return recipe suggestions or ingredients
+    if off_topic:
+        added_ingredients = []
+        suggested_recipe_names = []
+        recipe_suggestions = []
+        missing_ingredients = []
+        matched_recipe_name = None
 
     return ChatResponse(
         reply=reply_text,

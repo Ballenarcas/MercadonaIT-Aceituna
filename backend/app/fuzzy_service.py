@@ -17,27 +17,41 @@ def normalize_text(text: str) -> str:
     cleaned = re.sub(r'[^a-z0-9\s]', ' ', cleaned)
     return re.sub(r'\s+', ' ', cleaned).strip()
 
+STOP_WORDS = {
+    'a', 'al', 'de', 'del', 'la', 'las', 'el', 'los', 'en', 'con', 'y', 'o',
+    'un', 'una', 'unos', 'unas', 'por', 'para', 'de', 'su', 'sus', 'mi', 'mis'
+}
+
+
 def word_match(user_word: str, target_text: str) -> int:
-    """Check if user word matches any word in target text (handles plural/singular)."""
+    """Check if user word matches any meaningful word in target text (handles plural/singular)."""
     u = normalize_text(user_word)
-    if not u or len(u) < 2:
+    if not u or len(u) < 3 or u in STOP_WORDS:
         return 0
-    words = [normalize_text(w) for w in target_text.split() if len(w) >= 2]
+    words = [normalize_text(w) for w in target_text.split() if len(w) >= 3 and normalize_text(w) not in STOP_WORDS]
     best = 0
     for w in words:
         if not w:
             continue
-        # Direct equality or singular/plural substring
+        # Direct equality
         if u == w:
             return 100
+        # Direct plural / singular
         if (u.endswith('s') and u[:-1] == w) or (w.endswith('s') and w[:-1] == u):
             return 98
         if (u.endswith('es') and u[:-2] == w) or (w.endswith('es') and w[:-2] == u):
             return 98
-        if len(u) >= 4 and (u in w or w in u):
-            best = max(best, 90)
-        best = max(best, fuzz.ratio(u, w))
+        # Significant root match (both words >= 4 letters and one starts with the other)
+        if len(u) >= 4 and len(w) >= 4 and (u.startswith(w) or w.startswith(u)):
+            if min(len(u), len(w)) / max(len(u), len(w)) >= 0.75:
+                best = max(best, 85)
+        # Similarity ratio for words of comparable length
+        if abs(len(u) - len(w)) <= 2:
+            r = fuzz.ratio(u, w)
+            if r >= 80:
+                best = max(best, r)
     return best
+
 
 def is_giving_ingredients(text: str) -> bool:
     """Check if the user message is describing ingredients they have rather than asking for a specific recipe."""
@@ -61,39 +75,83 @@ def is_giving_ingredients(text: str) -> bool:
         return True
     return False
 
-def is_off_topic_message(text: str) -> bool:
-    """Detect if a user message is clearly off-topic (unrelated to cooking, food, recipes, or shopping)."""
+FOOD_AND_SHOPPING_INDICATORS = [
+    # Culinary actions & meal types
+    r'\b(receta|recetas|ingrediente|ingredientes|cocina|cocinar|cocinado|preparar|preparaci[oó]n|elaborar)\b',
+    r'\b(comida|comer|cena|cenar|desayuno|desayunar|almuerzo|almorzar|merienda|merendar|postre|tentempi[eé]|snack|picar)\b',
+    r'\b(plato|platos|men[uú]|sart[eé]n|horno|olla|cacerola|microondas|fre[ií]r|hervir|cocer|asar|hornear|guiso|guisar|salsa|bechamel|caldo)\b',
+    r'\b(mercadona|hacendado|supermercado|tienda|lista|carrito|cesta|compra|comprar|precio|cu[aá]nto cuesta|cu[aá]nto vale|euros?|€)\b',
+    r'\b(alimento|alimentos|nutrici[oó]n|dieta|calor[ií]as|vegano|vegetariano|sin gluten|cel[ií]aco)\b',
+    
+    # Food categories & common ingredients
+    r'\b(arroz|pasta|macarr[oó]n|macarrones|espagueti|espaguetis|fideos|tallarines|lasa[ñn]a)\b',
+    r'\b(pollo|ternera|cerdo|carne|carnes|pescado|marisco|at[uú]n|salm[oó]n|merluza|gambas|jam[oó]n|bacon|chorizo)\b',
+    r'\b(huevo|huevos|tortilla|leche|queso|yogur|mantequilla|nata)\b',
+    r'\b(tomate|patata|patatas|cebolla|ajo|aceite|oliva|vinagre|sal|pimienta|especias|az[uú]car|harina|pan|levadura)\b',
+    r'\b(fruta|frutas|manzana|pl[aá]tano|naranja|lim[oó]n|fresa|aguacate)\b',
+    r'\b(verdura|verduras|hortaliza|hortalizas|lechuga|ensalada|espinacas|zanahoria|calabac[ií]n|berenjena|pimiento)\b',
+    r'\b(legumbre|legumbres|lenteja|lentejas|garbanzo|garbanzos|alubia|alubias|jud[ií]as)\b',
+    r'\b(bebida|bebidas|agua|refresco|zumo|vino|cerveza|caf[eé]|t[eé]|chocolate|galleta|galletas)\b',
+]
+
+OFF_TOPIC_PATTERNS = [
+    # Programming / Tech / Software
+    r'\b(python|javascript|typescript|c\+\+|c\#|java|rust|golang|php|html|css|sql|docker|kubernetes|linux|windows)\b',
+    r'\b(programar|programaci[oó]n|c[oó]digo|script|software|hardware|compilar|compilador|algoritmo|depurar|debug|backend|frontend)\b',
+    r'\b(repositorio|git|github|pull request|commit|terminal|bash|powershell|api rest)\b',
+    # Mathematics / Physics / Science non-culinary
+    r'\b(derivada|integral|ecuaci[oó]n|teorema|trigonometr[ií]a|f[ií]sica cu[aá]ntica|relatividad|matem[aá]tica|matem[aá]ticas)\b',
+    # Politics / Geopolitics
+    r'\b(elecciones|partido pol[ií]tico|presidente del gobierno|diputado|ministro|senado|parlamento|geopol[ií]tica|guerra mundial)\b',
+    # Sports & non-culinary trivia
+    r'\b(champions league|la liga|bal[oó]n de oro|f[oó]rmula 1|motogp|partido de f[uú]tbol|qui[eé]n gan[oó] el mundial|mundial de f[uú]tbol)\b',
+    # General non-food requests
+    r'\b(capital de|qui[eé]n descubri[oó]|qui[eé]n invent[oó]|hazme un poema|escribe una canci[oó]n|redacta un ensayo|traduce al ingle[eé]s)\b',
+    r'\b(coche|mec[aá]nica|rueda de un coche|reparar motor|cambiar aceite del coche)\b',
+    r'\b(pel[ií]cula|pel[ií]culas|cine|serie|series|netflix|videojuego|videojuegos)\b',
+    # Insults, abuse, hostility, complaints
+    r'\b(tonto|tonta|tontos|tontas|idiota|idiotas|imb[eé]cil|imb[eé]ciles|est[uú]pido|est[uú]pida|in[uú]til|in[uú]tiles)\b',
+    r'\b(gilipollas|cabr[oó]n|cabrones|cabrona|puta|putas|puto|putos|mierda|mierdas|hijo de puta|hija de puta|hijos de puta)\b',
+    r'\b(capullo|capullos|subnormal|subnormales|bobo|boba|tarado|tarada|asqueroso|maldito|payaso|pendejo|pendeja)\b',
+    r'\b(vete a la mierda|vete al carajo|que te den|a la mierda|callate|c[aá]llate|pesao|pesado|pesada|no sirves|eres una mierda|eres basura)\b',
+]
+
+GREETING_WORDS = {
+    'hola', 'buenas', 'buenos', 'dias', 'días', 'tardes', 'noches', 'hey', 'saludos',
+    'que', 'qué', 'tal', 'gracias', 'muchas', 'adios', 'adiós', 'hasta', 'luego', 'chao'
+}
+
+
+def is_off_topic_message(text: str, conn: Optional[sqlite3.Connection] = None) -> bool:
+    """Detect if a user message is off-topic (unrelated to cooking, food, recipes, or shopping)."""
     t = text.lower().strip()
     if not t:
         return False
 
-    # Food, recipe, kitchen, or supermarket keywords override off-topic detection
-    food_indicators = [
-        r'\b(receta|recetas|ingrediente|ingredientes|cocina|cocinar|comida|cena|desayuno|almuerzo|merienda|postre)\b',
-        r'\b(plato|sart[eé]n|horno|olla|fre[ií]r|hervir|asar|guiso|salsa|bechamel|caldo)\b',
-        r'\b(mercadona|hacendado|supermercado|lista|carrito|compra|comprar|precio|cu[aá]nto cuesta|euros|€)\b',
-        r'\b(arroz|pasta|macarrones|pollo|ternera|cerdo|carne|pescado|at[uú]n|huevo|huevos|leche|tomate|patata|patatas|cebolla|ajo|aceite|queso|pan|fruta|verdura|legumbre|lentejas)\b',
-    ]
-    if any(re.search(pat, t) for pat in food_indicators):
+    # 1. Explicit off-topic keywords (programming, politics, sports, entertainment)
+    if any(re.search(pat, t) for pat in OFF_TOPIC_PATTERNS):
+        return True
+
+    # 2. Pure greetings / courtesies are on-topic
+    clean_words = [w for w in re.sub(r'[^\w\s]', ' ', t).split() if w]
+    if clean_words and all(w in GREETING_WORDS for w in clean_words):
         return False
 
-    off_topic_patterns = [
-        # Programming / Tech / Software
-        r'\b(python|javascript|typescript|c\+\+|c\#|java|rust|golang|php|html|css|sql|docker|kubernetes|linux|windows)\b',
-        r'\b(programar|programaci[oó]n|c[oó]digo|script|software|hardware|compilar|compilador|algoritmo|depurar|debug|backend|frontend)\b',
-        r'\b(repositorio|git|github|pull request|commit|terminal|bash|powershell|api rest)\b',
-        # Mathematics / Physics / Science
-        r'\b(derivada|integral|ecuaci[oó]n|teorema|trigonometr[ií]a|f[ií]sica cu[aá]ntica|relatividad|matem[aá]tica|matem[aá]ticas)\b',
-        # Politics / Geopolitics
-        r'\b(elecciones|partido pol[ií]tico|presidente del gobierno|diputado|ministro|senado|parlamento|geopol[ií]tica|guerra mundial)\b',
-        # Sports & non-culinary trivia
-        r'\b(champions league|la liga|bal[oó]n de oro|f[oó]rmula 1|motogp|partido de f[uú]tbol|qui[eé]n gan[oó] el mundial|mundial de f[uú]tbol)\b',
-        # General non-food requests
-        r'\b(capital de|qui[eé]n descubri[oó]|qui[eé]n invent[oó]|hazme un poema|escribe una canci[oó]n|redacta un ensayo|traduce al ingle[eé]s)\b',
-        r'\b(coche|mec[aá]nica|rueda de un coche|reparar motor|cambiar aceite del coche)\b',
-    ]
+    # 3. Contains food, kitchen, cooking, recipe, or shopping words -> on-topic
+    if any(re.search(pat, t) for pat in FOOD_AND_SHOPPING_INDICATORS):
+        return False
 
-    return any(re.search(pat, t) for pat in off_topic_patterns)
+    # 4. Check if text matches any recipe in the database (short queries)
+    if conn is not None and len(clean_words) <= 6:
+        try:
+            match = search_recipe_by_name(t, conn, threshold=60)
+            if match:
+                return False
+        except Exception:
+            pass
+
+    # Neither greeting nor culinary/supermarket related: non-related message!
+    return True
 
 
 def extract_ingredients(text: str) -> List[str]:
@@ -302,7 +360,7 @@ def search_recipe_by_name(
     recipe_query: str,
     conn: sqlite3.Connection,
     user_ingredients: Optional[List[str]] = None,
-    threshold: int = 55,
+    threshold: int = 65,
 ) -> Optional[Dict[str, Any]]:
     """
     Fuzzy match a recipe name against the database using thefuzz.
@@ -314,27 +372,27 @@ def search_recipe_by_name(
 
     names = [r["name"] for r in all_recipes]
     norm_query = normalize_text(recipe_query)
+    if not norm_query or len(norm_query) < 3:
+        return None
 
-    # Use thefuzz to find the best match
-    best_match_name, score = process.extractOne(
-        norm_query,
-        names,
-        scorer=fuzz.token_set_ratio,
-    )
+    best_match_name = None
+    best_score = 0
 
-    if score < threshold:
-        # Also try token_sort_ratio and partial_ratio
-        for r_name in names:
-            alt_score = max(
-                fuzz.token_sort_ratio(norm_query, normalize_text(r_name)),
-                fuzz.partial_ratio(norm_query, normalize_text(r_name)),
-                word_match(norm_query, normalize_text(r_name)),
-            )
-            if alt_score > score:
-                score = alt_score
-                best_match_name = r_name
+    for r_name in names:
+        norm_r = normalize_text(r_name)
+        t_set = fuzz.token_set_ratio(norm_query, norm_r)
+        t_sort = fuzz.token_sort_ratio(norm_query, norm_r)
+        w_score = max((word_match(w, norm_r) for w in norm_query.split() if w not in STOP_WORDS), default=0)
 
-    if score < threshold:
+        score = max(t_set, t_sort)
+        if w_score >= 85 and w_score > score:
+            score = w_score
+
+        if score > best_score:
+            best_score = score
+            best_match_name = r_name
+
+    if best_score < threshold or not best_match_name:
         return None
 
     matched_recipe = next((r for r in all_recipes if r["name"] == best_match_name), None)
