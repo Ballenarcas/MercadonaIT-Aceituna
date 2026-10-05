@@ -520,6 +520,42 @@ def delete_recipe(conn: sqlite3.Connection, recipe_id: str) -> bool:
     conn.commit()
     return cursor.rowcount > 0
 
+def _purchase_format(
+    conn: sqlite3.Connection, ing_name: str, qty: float, unit: str, price: Optional[float]
+) -> tuple:
+    """Convierte cantidad de receta a formato de compra (envase de Mercadona).
+
+    En la lista no tiene sentido "15 g de aceite": se compra 1 botella de 1 L.
+    Busca el envase en la tabla productos y devuelve (cantidad, unidad, precio).
+    Si no hay envase conocido, normaliza g->kg en cantidades grandes.
+    """
+    norm_ing = ing_name.lower().strip()
+    try:
+        rows = conn.execute("SELECT nombre, precio, peso_neto_gr FROM productos").fetchall()
+    except Exception:
+        rows = []
+    for row in rows:
+        norm_prod = (row["nombre"] or "").lower().strip()
+        if not norm_prod or len(norm_prod) < 4:
+            continue
+        if norm_ing in norm_prod or norm_prod in norm_ing:
+            pack_price = row["precio"]
+            pack_grams = row["peso_neto_gr"] or 0
+            if "huevo" in norm_prod:
+                return (1.0, "docena", pack_price)
+            if "aceite" in norm_prod:
+                return (1.0, "litro", pack_price)
+            if pack_grams >= 1000:
+                return (round(pack_grams / 1000, 2), "kg", pack_price)
+            if pack_grams > 0:
+                return (pack_grams, "g", pack_price)
+            return (1.0, "ud", pack_price)
+    # Sin envase conocido: evita gramos absurdos en cantidades grandes
+    if unit == "g" and qty >= 1000:
+        return (round(qty / 1000, 2), "kg", price)
+    return (qty, unit, price)
+
+
 def add_recipe_to_list(
     conn: sqlite3.Connection,
     recipe_id: str,
@@ -539,14 +575,20 @@ def add_recipe_to_list(
             continue
         item_id = f"item_{now + idx}_{uuid.uuid4().hex[:6]}"
         scaled_qty = round(ing.quantity * scale, 2)
+        buy_qty, buy_unit, buy_price = _purchase_format(
+            conn, ing.name, scaled_qty, ing.unit, ing.estimatedPrice
+        )
+        notes = f"De receta: {recipe.name}"
+        if (buy_qty, buy_unit) != (scaled_qty, ing.unit):
+            notes += f" (usas {scaled_qty:g} {ing.unit})"
         conn.cursor().execute("""
             INSERT INTO shopping_items
                 (id, list_id, name, category_id, brand, quantity, unit, estimated_price, notes, completed, in_cart, priority, created_at)
             VALUES (?, ?, ?, ?, 'General', ?, ?, ?, ?, 0, 0, 'media', ?)
         """, (
             item_id, req.listId, ing.name, ing.categoryId,
-            scaled_qty, ing.unit, ing.estimatedPrice,
-            f"De receta: {recipe.name}", now + idx,
+            buy_qty, buy_unit, buy_price,
+            notes, now + idx,
         ))
         conn.commit()
         item = get_item(conn, item_id)

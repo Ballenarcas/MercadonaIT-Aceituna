@@ -78,6 +78,26 @@ def test_add_recipe_to_list_survives_zero_servings_recipe(db_conn):
     assert added[0].quantity == 1.0
 
 
+def test_purchase_format_converts_to_package(db_conn):
+    db_conn.execute(
+        """CREATE TABLE IF NOT EXISTS productos (
+            id INTEGER PRIMARY KEY, nombre TEXT NOT NULL, precio REAL NOT NULL,
+            peso_neto_gr REAL, euros_kg REAL)"""
+    )
+    db_conn.execute(
+        "INSERT INTO productos (nombre, precio, peso_neto_gr) VALUES "
+        "('Aceite de Oliva Virgen Extra Hacendado', 4.70, 1000.0)"
+    )
+    db_conn.commit()
+
+    # 15 g de receta -> se compra 1 botella de 1 litro
+    assert crud._purchase_format(db_conn, "Aceite de Oliva Virgen Extra Hacendado", 15.0, "g", 0.07) == (
+        1.0, "litro", 4.70,
+    )
+    # Sin envase conocido se mantiene la cantidad de receta
+    assert crud._purchase_format(db_conn, "Cebolla", 150.0, "g", 0.30) == (150.0, "g", 0.30)
+
+
 def test_default_db_path_is_repo_anchored():
     default = db_module._default_db_file()
     assert os.path.isabs(default)

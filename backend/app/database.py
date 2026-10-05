@@ -52,7 +52,7 @@ SEED_RECIPES = [
             ("Pimiento rojo", 1, "ud", "fruta-verdura", 1.10, 0),
             ("Aguacate", 1, "ud", "fruta-verdura", 1.35, 0),
             ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
-            ("Aceite de oliva virgen extra", 15, "g", "despensa-conservas", 4.70, 0),
+            ("Aceite de oliva virgen extra", 15, "g", "despensa-conservas", 0.07, 0),
         ],
     },
     {
@@ -70,7 +70,7 @@ SEED_RECIPES = [
             ("Patata", 500, "g", "fruta-verdura", 1.35, 0),
             ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 0),
             ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
-            ("Aceite de oliva virgen extra", 20, "g", "despensa-conservas", 4.70, 0),
+            ("Aceite de oliva virgen extra", 20, "g", "despensa-conservas", 0.09, 0),
         ],
     },
     {
@@ -85,9 +85,9 @@ SEED_RECIPES = [
         "user_id": "user-marta",
         "ingredients": [
             ("Patata", 800, "g", "fruta-verdura", 1.35, 0),
-            ("Huevos camperos", 6, "ud", "lacteos-huevos", 2.45, 0),
+            ("Huevos camperos", 6, "ud", "lacteos-huevos", 1.68, 0),
             ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 1),
-            ("Aceite de oliva virgen extra", 250, "g", "despensa-conservas", 4.70, 0),
+            ("Aceite de oliva virgen extra", 250, "g", "despensa-conservas", 1.18, 0),
             ("Sal fina", 3, "g", "despensa-conservas", 0.35, 0),
         ],
     },
