@@ -43,6 +43,7 @@ class ShoppingItemBase(BaseModel):
     estimatedPrice: Optional[float] = Field(default=None, alias="estimatedPrice")
     notes: Optional[str] = None
     priority: PriorityType = Field(default="media")
+    inCart: bool = Field(default=False, alias="inCart")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -163,7 +164,28 @@ class AddRecipeToListRequest(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-# ── AI Chat ───────────────────────────────────────────────────────────────────
+# ── AI Chat & Recipe Matching ────────────────────────────────────────────────
+class MissingIngredientItem(BaseModel):
+    name: str
+    quantity: float = 1.0
+    unit: str = "ud"
+    categoryId: str = Field(default="otros", alias="categoryId")
+    brand: str = Field(default="Hacendado")
+    estimatedPrice: Optional[float] = Field(default=None, alias="estimatedPrice")
+    notes: Optional[str] = None
+    inCart: bool = Field(default=False, alias="inCart")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class RecipeSuggestionItem(BaseModel):
+    id: str
+    name: str
+    imageEmoji: str = Field(default="🍽️", alias="imageEmoji")
+    matchScore: int = Field(default=0, alias="matchScore")
+    matchedIngredients: List[str] = Field(default_factory=list, alias="matchedIngredients")
+    missingCount: int = Field(default=0, alias="missingCount")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -180,5 +202,29 @@ class ChatResponse(BaseModel):
     reply: str
     addedIngredients: List[str] = Field(default_factory=list, alias="addedIngredients")
     suggestedRecipes: List[str] = Field(default_factory=list, alias="suggestedRecipes")
+    recipeSuggestions: List[RecipeSuggestionItem] = Field(default_factory=list, alias="recipeSuggestions")
+    missingIngredients: List[MissingIngredientItem] = Field(default_factory=list, alias="missingIngredients")
+    recipeName: Optional[str] = Field(default=None, alias="recipeName")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class BatchCreateItemsRequest(BaseModel):
+    listId: str = Field(default="default", alias="listId")
+    items: List[ShoppingItemCreate]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class SearchByIngredientsRequest(BaseModel):
+    ingredients: List[str]
+
+class MissingIngredientsRequest(BaseModel):
+    recipe: str
+    userIngredients: Optional[List[str]] = Field(default=None, alias="userIngredients")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class MissingIngredientsResponse(BaseModel):
+    recipeName: str = Field(alias="recipeName")
+    missingIngredients: List[MissingIngredientItem] = Field(default_factory=list, alias="missingIngredients")
 
     model_config = ConfigDict(populate_by_name=True)

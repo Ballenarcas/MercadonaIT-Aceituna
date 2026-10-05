@@ -82,11 +82,34 @@ export type RecipeCategory = 'all' | 'desayuno' | 'comida' | 'cena' | 'postre' |
 
 // ── AI Chat ───────────────────────────────────────────────────────────────────
 
+export interface MissingIngredient {
+  name: string;
+  quantity: number;
+  unit: string;
+  categoryId?: string;
+  brand?: string;
+  estimatedPrice?: number;
+  notes?: string;
+  inCart?: boolean;
+}
+
+export interface RecipeSuggestion {
+  id: string;
+  name: string;
+  imageEmoji: string;
+  matchScore: number;
+  matchedIngredients: string[];
+  missingCount: number;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   addedIngredients?: string[];
   suggestedRecipes?: string[];
+  recipeSuggestions?: RecipeSuggestion[];
+  missingIngredients?: MissingIngredient[];
+  recipeName?: string;
 }
 
 // ── UI State ──────────────────────────────────────────────────────────────────

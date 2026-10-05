@@ -13,4 +13,7 @@ afterEach(() => {
 if (typeof window !== 'undefined') {
   window.alert = vi.fn();
   window.confirm = vi.fn(() => true);
+  if (window.HTMLElement) {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  }
 }

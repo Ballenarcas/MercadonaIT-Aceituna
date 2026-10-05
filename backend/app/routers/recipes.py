@@ -2,7 +2,19 @@ from fastapi import APIRouter, Depends, HTTPException
 import sqlite3
 from typing import List, Optional
 from ..database import get_db
-from ..schemas import RecipeCreate, RecipeUpdate, RecipeResponse, AddRecipeToListRequest, ShoppingItemResponse
+from ..schemas import (
+    RecipeCreate,
+    RecipeUpdate,
+    RecipeResponse,
+    AddRecipeToListRequest,
+    ShoppingItemResponse,
+    SearchByIngredientsRequest,
+    RecipeSuggestionItem,
+    MissingIngredientsRequest,
+    MissingIngredientsResponse,
+    MissingIngredientItem,
+)
+from ..fuzzy_service import search_recipes_by_ingredients, search_recipe_by_name
 from .. import crud
 
 router = APIRouter(prefix="/recipes", tags=["Recipes"])
@@ -61,3 +73,49 @@ def add_recipe_to_list(
         raise HTTPException(status_code=404, detail="Receta no encontrada")
     added = crud.add_recipe_to_list(db, recipe_id, req)
     return added
+
+
+@router.post("/search-by-ingredients", response_model=List[RecipeSuggestionItem])
+def search_by_ingredients(
+    req: SearchByIngredientsRequest,
+    db: sqlite3.Connection = Depends(get_db),
+):
+    """Buscar recetas en la base de datos a partir de ingredientes usando fuzzy matching con thefuzz."""
+    results = search_recipes_by_ingredients(req.ingredients, db)
+    return [
+        RecipeSuggestionItem(
+            id=r["id"],
+            name=r["name"],
+            imageEmoji=r["imageEmoji"],
+            matchScore=r["matchScore"],
+            matchedIngredients=r["matchedIngredients"],
+            missingCount=r["missingCount"],
+        )
+        for r in results
+    ]
+
+
+@router.post("/missing-ingredients", response_model=MissingIngredientsResponse)
+def get_missing_ingredients(
+    req: MissingIngredientsRequest,
+    db: sqlite3.Connection = Depends(get_db),
+):
+    """Obtener los ingredientes faltantes de una receta usando fuzzy matching con thefuzz."""
+    matched = search_recipe_by_name(req.recipe, db, user_ingredients=req.userIngredients)
+    if not matched:
+        raise HTTPException(status_code=404, detail="No se encontró una receta coincidente en la base de datos")
+    
+    missing = [
+        MissingIngredientItem(
+            name=m["name"],
+            quantity=m.get("quantity", 1.0),
+            unit=m.get("unit", "ud"),
+            categoryId=m.get("categoryId", "otros"),
+            brand=m.get("brand", "Hacendado"),
+            estimatedPrice=m.get("estimatedPrice"),
+            notes=f"De receta: {matched['name']}",
+            inCart=False,
+        )
+        for m in matched.get("missingIngredients", [])
+    ]
+    return MissingIngredientsResponse(recipeName=matched["name"], missingIngredients=missing)

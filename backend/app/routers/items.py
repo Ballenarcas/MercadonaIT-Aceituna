@@ -7,7 +7,8 @@ from ..schemas import (
     ShoppingItemUpdate,
     ShoppingItemResponse,
     BudgetStatsResponse,
-    ShareTextResponse
+    ShareTextResponse,
+    BatchCreateItemsRequest
 )
 from .. import crud
 from ..initial_data import MERCADONA_CATEGORIES
@@ -39,6 +40,11 @@ def read_items(
 def create_item(item_in: ShoppingItemCreate, db: sqlite3.Connection = Depends(get_db)):
     """Añadir un nuevo producto a la lista seleccionada."""
     return crud.create_item(db, item_in)
+
+@router.post("/batch", response_model=List[ShoppingItemResponse], status_code=status.HTTP_201_CREATED)
+def create_items_batch(payload: BatchCreateItemsRequest, db: sqlite3.Connection = Depends(get_db)):
+    """Añadir múltiples productos a la lista o carrito a la vez."""
+    return crud.create_items_batch(db, payload.listId, payload.items)
 
 @router.get("/stats", response_model=BudgetStatsResponse)
 def get_stats(list_id: Optional[str] = None, db: sqlite3.Connection = Depends(get_db)):
