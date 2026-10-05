@@ -125,6 +125,20 @@ def delete_list(conn: sqlite3.Connection, list_id: str) -> bool:
 
 # --- ITEMS CRUD ---
 
+def _safe_literal(value: Any, allowed: tuple, default: str) -> str:
+    """Devuelve value si está en allowed; si no, default.
+
+    Evita que un valor sucio en BD (p. ej. brand/unit fuera del enum)
+    provoque ValidationError en cascada en todos los endpoints.
+    """
+    return value if value in allowed else default
+
+
+BRANDS = ('Hacendado', 'Bosque Verde', 'Deliplus', 'Compy', 'General')
+UNITS = ('ud', 'kg', 'g', 'pack', 'litro', 'docena', 'bandeja')
+PRIORITIES = ('baja', 'media', 'alta')
+
+
 def row_to_item(row: sqlite3.Row) -> ShoppingItemResponse:
     in_cart = bool(row["in_cart"] if "in_cart" in row.keys() else row["completed"])
     completed = bool(row["completed"]) or in_cart
@@ -133,14 +147,14 @@ def row_to_item(row: sqlite3.Row) -> ShoppingItemResponse:
         name=row["name"],
         listId=row["list_id"] if "list_id" in row.keys() else "default",
         categoryId=row["category_id"],
-        brand=row["brand"], # type: ignore
+        brand=_safe_literal(row["brand"], BRANDS, "General"),
         quantity=float(row["quantity"]),
-        unit=row["unit"], # type: ignore
+        unit=_safe_literal(row["unit"], UNITS, "ud"),
         estimatedPrice=float(row["estimated_price"]) if row["estimated_price"] is not None else None,
         notes=row["notes"],
         completed=completed,
         inCart=in_cart,
-        priority=row["priority"], # type: ignore
+        priority=_safe_literal(row["priority"], PRIORITIES, "media"),
         createdAt=int(row["created_at"])
     )
 
@@ -410,7 +424,7 @@ def _row_to_ingredient(row: sqlite3.Row) -> RecipeIngredientResponse:
         recipeId=row["recipe_id"],
         name=row["name"],
         quantity=float(row["quantity"]),
-        unit=row["unit"],  # type: ignore
+        unit=_safe_literal(row["unit"], UNITS, "ud"),
         categoryId=row["category_id"],
         estimatedPrice=float(row["estimated_price"]) if row["estimated_price"] is not None else None,
         isOptional=bool(row["is_optional"]),

@@ -8,8 +8,8 @@ from .routers import items, categories, catalog, lists, recipes, chat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB tables
-    init_db()
+    # Initialize DB tables + seed data (solo aquí, no en cada import)
+    init_db(seed=True)
     
     # Check if empty, then seed sample items
     conn = get_connection()

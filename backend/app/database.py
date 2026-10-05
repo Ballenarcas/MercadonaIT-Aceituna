@@ -13,7 +13,20 @@ def _resolve_db_path(database_url: str) -> str:
     return database_url
 
 
-DB_FILE = os.path.abspath(_resolve_db_path(os.getenv("DATABASE_URL", "sqlite:///./mercadona.db")))
+def _default_db_file() -> str:
+    """Ruta por defecto anclada a la raíz del repo (no depende del CWD).
+
+    Evita BD fantasmas como backend/mercadona.db al arrancar desde otra carpeta.
+    Se puede override con DATABASE_URL.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))  # backend/app
+    repo_root = os.path.dirname(os.path.dirname(here))  # repo
+    return os.path.join(repo_root, "mercadona.db")
+
+
+DB_FILE = os.path.abspath(
+    _resolve_db_path(os.getenv("DATABASE_URL", "sqlite:///" + _default_db_file()))
+)
 
 SEED_USERS = [
     ("user-ana", "Ana García", "ana.garcia@example.com"),
@@ -99,7 +112,12 @@ SEED_RECIPES = [
     },
 ]
 
-def init_db():
+def init_db(seed: bool = False):
+    """Crea el esquema (siempre) y, solo si seed=True, sincroniza datos semilla.
+
+    Separar el seed evita escrituras pesadas en cada import: al importar solo
+    se garantiza el esquema; los datos se siembran desde el lifespan.
+    """
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     cursor = conn.cursor()
 
@@ -233,7 +251,13 @@ def init_db():
     );
     """)
 
-    # Seed productos, recetas, and recipe data if empty
+    # Seed productos, recetas, and recipe data if empty (solo con seed=True,
+    # para no hacer escrituras pesadas en cada import).
+    if not seed:
+        conn.commit()
+        conn.close()
+        return
+
     cursor.execute("SELECT COUNT(*) FROM recetas")
     recetas_count = cursor.fetchone()[0]
 
@@ -323,23 +347,29 @@ def init_db():
         """, (rec_id, rec_name, f"Deliciosa receta de {rec_name} elaborada con ingredientes de Mercadona.", emoji, now + idx * 1000))
 
         cursor.execute("""
-            SELECT p.nombre, p.precio, ri.cantidad_necesaria_gr
+            SELECT p.nombre, p.precio, p.peso_neto_gr, ri.cantidad_necesaria_gr
             FROM receta_ingredientes ri
             JOIN productos p ON p.id = ri.producto_id
             WHERE ri.receta_id = ?
         """, (rec[0],))
         for ing_row in cursor.fetchall():
             p_name = ing_row[0]
-            p_price = ing_row[1]
+            grams = ing_row[3] or 0
+            if grams and ing_row[2]:
+                # Prorratea el precio del envase a los gramos de la receta
+                ing_price: float | None = round(ing_row[1] * grams / ing_row[2], 2)
+            else:
+                ing_price = ing_row[1]
             p_cat = "otros"
             for k, v in category_map.items():
                 if k in p_name.lower():
                     p_cat = v
                     break
+            stable_hash = hashlib.md5(p_name.encode("utf-8")).hexdigest()[:7]
             cursor.execute("""
                 INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, category_id, estimated_price, is_optional)
-                VALUES (?, ?, ?, 1.0, 'ud', ?, ?, 0)
-            """, (f"ing_{rec[0]}_{hash(p_name) & 0xfffffff}", rec_id, p_name, p_cat, p_price))
+                VALUES (?, ?, ?, ?, 'g', ?, ?, 0)
+            """, (f"ing_{rec[0]}_{stable_hash}", rec_id, p_name, grams or 1.0, p_cat, ing_price))
 
     # Add stable users and richer recipes to every existing database.
     for user_id, name, email in SEED_USERS:
