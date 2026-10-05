@@ -54,6 +54,12 @@ function App() {
   const [listToAddProduct, setListToAddProduct] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const cartItems = useMemo(() => dbItems.filter((item) => item.inCart), [dbItems]);
+  const cartTotal = useMemo(
+    () => cartItems.reduce((total, item) => total + (item.estimatedPrice || 0) * item.quantity, 0),
+    [cartItems]
+  );
+
   // --- ESTADOS DE RECETAS (BD) ---
   const [activeRecipeTab, setActiveRecipeTab] = useState('Comunidad');
   const [dbRecipes, setDbRecipes] = useState<Recipe[]>([]);
@@ -226,6 +232,28 @@ function App() {
     }
   };
 
+  const toggleItemCart = async (itemId: string) => {
+    setDbItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, inCart: !item.inCart, completed: !item.inCart }
+          : item
+      )
+    );
+    try {
+      await api.toggleCart(itemId);
+    } catch (e) {
+      console.warn('Error al actualizar el carrito en backend:', e);
+    }
+  };
+
+  const handleChatItemsAdded = (createdItems: ShoppingItem[]) => {
+    setDbItems((prev) => {
+      const createdIds = new Set(createdItems.map((item) => item.id));
+      return [...prev.filter((item) => !createdIds.has(item.id)), ...createdItems];
+    });
+  };
+
   // --- LÓGICA DE PRODUCTOS CONECTADA AL BACKEND ---
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return availableProducts.slice(0, 30);
@@ -340,12 +368,12 @@ function App() {
 
   return (
     <div className="min-h-screen bg-white font-sans flex flex-col relative">
-      <Header />
+      <Header cartCount={cartItems.length} onCartClick={() => setActiveTab('Mi carrito')} />
 
       {/* Menú inferior principal (Mis Listas y Recetas) */}
       <div className="w-full bg-white py-4 sm:py-6 flex items-center justify-center border-b border-gray-100 shadow-xs z-10 relative">
         <div className="flex items-center gap-4">
-          {['Mis listas', 'Recetas'].map((tab) => (
+          {['Mis listas', 'Mi carrito', 'Recetas'].map((tab) => (
             <button 
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -461,6 +489,54 @@ function App() {
                   </div>
                   <span className="font-semibold text-lg">Añadir lista</span>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'Mi carrito' && (
+            <div>
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">Mi carrito</h2>
+                  <p className="mt-1 text-xs text-gray-500">Productos añadidos desde tus listas y desde mercadITo</p>
+                </div>
+                <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-[#00703c]">
+                  {cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
+                {cartItems.length > 0 ? (
+                  <ul className="divide-y divide-gray-100">
+                    {cartItems.map((item) => (
+                      <li key={item.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-800">{item.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {item.quantity} {item.unit} · {item.listId}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-4">
+                          <span className="font-semibold text-[#00703c]">
+                            {((item.estimatedPrice || 0) * item.quantity).toFixed(2)} €
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleItemCart(item.id)}
+                            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:border-[#00703c] hover:text-[#00703c]"
+                          >
+                            Devolver a la lista
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="py-10 text-center text-sm text-gray-500">Tu carrito está vacío.</p>
+                )}
+                <div className="mt-5 border-t border-gray-100 pt-4 text-right text-lg font-bold text-gray-800">
+                  Total: <span className="text-[#00703c]">{cartTotal.toFixed(2)} €</span>
+                </div>
               </div>
             </div>
           )}
@@ -598,7 +674,12 @@ function App() {
       </main>
 
       {/* Floating AI Chatbot con sincronización bidireccional */}
-      <ChatBot activeList={activeChatList} onIngredientAdded={loadDataFromBackend} />
+      <ChatBot
+        activeList={activeChatList}
+        lists={dbLists}
+        onItemsAdded={handleChatItemsAdded}
+        onIngredientAdded={loadDataFromBackend}
+      />
 
       {/* --- MODAL CONFIRMACIÓN BORRAR LISTA --- */}
       {listToDelete !== null && (

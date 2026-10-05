@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Check, Loader2, MessageSquareText, Plus, Send, ShoppingCart } from 'lucide-react';
 import mercaditoImage from '../assets/Mercadito.png';
 import { api } from '../services/api';
@@ -6,7 +6,9 @@ import type { ChatMessage, MissingIngredient, ShoppingList } from '../types';
 
 interface ChatBotProps {
   activeList?: ShoppingList;
+  lists?: ShoppingList[];
   onIngredientAdded?: () => void;
+  onItemsAdded?: (items: import('../types').ShoppingItem[]) => void;
 }
 
 const DEFAULT_LIST: ShoppingList = {
@@ -34,15 +36,16 @@ function inlineMd(text: string) {
     .replace(/_([^_\n]+)_/g, '<em>$1</em>');
 }
 
-function formatMarkdown(text: string) {
+function formatMarkdown(text: string, isUserMessage = false) {
   const lines = text.split('\n');
+  const textColor = isUserMessage ? 'text-white' : 'text-slate-700';
 
   return lines.map((line, i) => {
     const trimmed = line.trim();
 
     if (trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
       return (
-        <li key={i} className="ml-4 text-sm leading-relaxed text-slate-700">
+        <li key={i} className={`ml-4 text-sm leading-relaxed ${textColor}`}>
           <span dangerouslySetInnerHTML={{ __html: inlineMd(trimmed.slice(2)) }} />
         </li>
       );
@@ -53,7 +56,7 @@ function formatMarkdown(text: string) {
     }
 
     return (
-      <p key={i} className="text-sm leading-relaxed text-slate-700">
+      <p key={i} className={`text-sm leading-relaxed ${textColor}`}>
         <span dangerouslySetInnerHTML={{ __html: inlineMd(trimmed) }} />
       </p>
     );
@@ -64,16 +67,21 @@ interface MissingIngredientsProps {
   recipeName?: string;
   ingredients: MissingIngredient[];
   activeListId: string;
+  lists: ShoppingList[];
   onAdded: () => void;
+  onItemsAdded?: (items: import('../types').ShoppingItem[]) => void;
 }
 
 const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
   recipeName,
   ingredients,
   activeListId,
+  lists,
   onAdded,
+  onItemsAdded,
 }) => {
   const [checkedIndices, setCheckedIndices] = useState<Set<number>>(() => new Set(ingredients.map((_, idx) => idx)));
+  const [selectedListId, setSelectedListId] = useState(activeListId);
   const [addingToList, setAddingToList] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedToListSuccess, setAddedToListSuccess] = useState(false);
@@ -102,9 +110,10 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
     }
 
     try {
+      const targetListId = inCart ? activeListId : selectedListId;
       const itemsToCreate = selected.map((item) => ({
         name: item.name,
-        listId: activeListId,
+        listId: targetListId,
         categoryId: item.categoryId || 'otros',
         brand: (item.brand as any) || 'Hacendado',
         quantity: item.quantity || 1,
@@ -116,7 +125,9 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
         priority: 'media' as const,
       }));
 
-      await api.createItemsBatch(activeListId, itemsToCreate);
+      const createdItems = await api.createItemsBatch(targetListId, itemsToCreate);
+
+      onItemsAdded?.(createdItems);
 
       if (inCart) {
         setAddedToCartSuccess(true);
@@ -185,6 +196,24 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-emerald-200/80 pt-2">
         <span className="text-[11px] font-medium text-emerald-700">{checkedIndices.size} seleccionados</span>
         <div className="flex flex-wrap items-center gap-1.5">
+          {lists.length > 1 && (
+            <label className="flex items-center gap-1 text-[11px] font-semibold text-emerald-800">
+              Lista:
+              <select
+                value={selectedListId}
+                onChange={(event) => setSelectedListId(event.target.value)}
+                disabled={anyLoading || addedToListSuccess}
+                className="max-w-[135px] rounded-md border border-emerald-300 bg-white px-1.5 py-1 text-[11px] font-semibold text-gray-700 outline-none focus:border-emerald-600"
+                aria-label="Seleccionar lista de destino"
+              >
+                {lists.map((list) => (
+                  <option key={list.id} value={list.id}>
+                    {list.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             onClick={() => handleAddItems(false)}
@@ -250,12 +279,19 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
 
 export const ChatBot: React.FC<ChatBotProps> = ({
   activeList = DEFAULT_LIST,
+  lists = [activeList],
   onIngredientAdded = () => undefined,
+  onItemsAdded,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -328,14 +364,16 @@ export const ChatBot: React.FC<ChatBotProps> = ({
                         : 'rounded-bl-none border border-gray-100 bg-white text-gray-800'
                     }`}
                   >
-                    {msg.content && formatMarkdown(msg.content)}
+                    {msg.content && formatMarkdown(msg.content, msg.role === 'user')}
 
                     {msg.missingIngredients && msg.missingIngredients.length > 0 && (
                       <MissingIngredientsChecklist
                         recipeName={msg.recipeName}
                         ingredients={msg.missingIngredients}
                         activeListId={activeList.id}
+                        lists={lists}
                         onAdded={onIngredientAdded}
+                        onItemsAdded={onItemsAdded}
                       />
                     )}
 
@@ -371,6 +409,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
           </div>
 

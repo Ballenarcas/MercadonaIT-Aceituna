@@ -1,7 +1,12 @@
 import React from 'react';
 import logoMercadona from '../assets/Logo_Mercadona.png'; 
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  cartCount?: number;
+  onCartClick?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ cartCount = 0, onCartClick }) => {
   return (
     <header className="w-full flex flex-col font-sans">
       {/* Franja superior (Blanca) */}
@@ -33,9 +38,14 @@ const Header: React.FC = () => {
             <h1 className="text-4xl font-black text-[#00703c] tracking-tighter">MERCADONA</h1>
           </div>
           
-          <button className="bg-[#e23000] text-white px-6 py-2.5 rounded-full font-semibold flex items-center hover:bg-orange-700 transition-colors">
+          <button
+            type="button"
+            onClick={onCartClick}
+            className="bg-[#e23000] text-white px-6 py-2.5 rounded-full font-semibold flex items-center hover:bg-orange-700 transition-colors"
+          >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            Compra online
+            <span>Compra online</span>
+            <span className="ml-1 text-xs opacity-90">· Mi carrito ({cartCount})</span>
           </button>
         </div>
       </div>
