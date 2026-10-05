@@ -78,24 +78,39 @@ def test_add_recipe_to_list_survives_zero_servings_recipe(db_conn):
     assert added[0].quantity == 1.0
 
 
-def test_purchase_format_converts_to_package(db_conn):
+def test_add_recipe_to_list_keeps_purchase_units(db_conn):
+    """Los ingredientes están en formato compra (1 litro, 1 bandeja...):
+    al añadir receta a la lista se copian tal cual, sin conversiones."""
     db_conn.execute(
-        """CREATE TABLE IF NOT EXISTS productos (
-            id INTEGER PRIMARY KEY, nombre TEXT NOT NULL, precio REAL NOT NULL,
-            peso_neto_gr REAL, euros_kg REAL)"""
+        """CREATE TABLE IF NOT EXISTS recipes (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+            category TEXT NOT NULL DEFAULT 'general', servings INTEGER NOT NULL DEFAULT 2,
+            prep_time_min INTEGER NOT NULL DEFAULT 30, image_emoji TEXT NOT NULL DEFAULT '🍽️',
+            tags TEXT DEFAULT '', created_at INTEGER NOT NULL)"""
     )
     db_conn.execute(
-        "INSERT INTO productos (nombre, precio, peso_neto_gr) VALUES "
-        "('Aceite de Oliva Virgen Extra Hacendado', 4.70, 1000.0)"
+        """CREATE TABLE IF NOT EXISTS recipe_ingredients (
+            id TEXT PRIMARY KEY, recipe_id TEXT NOT NULL, name TEXT NOT NULL,
+            quantity REAL NOT NULL DEFAULT 1.0, unit TEXT NOT NULL DEFAULT 'ud',
+            category_id TEXT NOT NULL DEFAULT 'otros', estimated_price REAL,
+            is_optional INTEGER NOT NULL DEFAULT 0)"""
+    )
+    db_conn.execute(
+        "INSERT INTO recipes (id, name, servings, created_at) VALUES ('r-pack', 'Pack', 2, 1000)"
+    )
+    db_conn.execute(
+        "INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, estimated_price)"
+        " VALUES ('ri-pack', 'r-pack', 'Aceite', 1.0, 'litro', 4.70)"
     )
     db_conn.commit()
 
-    # 15 g de receta -> se compra 1 botella de 1 litro
-    assert crud._purchase_format(db_conn, "Aceite de Oliva Virgen Extra Hacendado", 15.0, "g", 0.07) == (
-        1.0, "litro", 4.70,
+    added = crud.add_recipe_to_list(
+        db_conn, "r-pack", AddRecipeToListRequest(listId="default")
     )
-    # Sin envase conocido se mantiene la cantidad de receta
-    assert crud._purchase_format(db_conn, "Cebolla", 150.0, "g", 0.30) == (150.0, "g", 0.30)
+    assert len(added) == 1
+    assert added[0].quantity == 1.0
+    assert added[0].unit == "litro"
+    assert added[0].estimatedPrice == 4.70
 
 
 def test_recipe_ingredient_prices_are_unit_prices(db_conn):

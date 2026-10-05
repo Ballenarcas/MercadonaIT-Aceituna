@@ -47,12 +47,12 @@ SEED_RECIPES = [
         "tags": "saludable,vegetariano,quinoa",
         "user_id": "user-ana",
         "ingredients": [
-            ("Quinoa", 180, "g", "despensa-conservas", 0.0055, 0),
-            ("Calabacín", 300, "g", "fruta-verdura", 0.0022, 0),
+            ("Quinoa", 1, "ud", "despensa-conservas", 2.75, 0),
+            ("Calabacín", 1, "ud", "fruta-verdura", 0.66, 0),
             ("Pimiento rojo", 1, "ud", "fruta-verdura", 1.10, 0),
             ("Aguacate", 1, "ud", "fruta-verdura", 1.35, 0),
             ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
-            ("Aceite de oliva virgen extra", 15, "g", "despensa-conservas", 0.0047, 0),
+            ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
         ],
     },
     {
@@ -66,11 +66,11 @@ SEED_RECIPES = [
         "tags": "pescado,horno,rapida",
         "user_id": "user-carlos",
         "ingredients": [
-            ("Lomos de salmón", 2, "ud", "pescado", 3.25, 0),
-            ("Patata", 500, "g", "fruta-verdura", 0.00112, 0),
+            ("Lomos de salmón", 1, "bandeja", "pescado", 6.50, 0),
+            ("Patata", 1, "kg", "fruta-verdura", 1.12, 0),
             ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 0),
             ("Limón", 1, "ud", "fruta-verdura", 0.35, 0),
-            ("Aceite de oliva virgen extra", 20, "g", "despensa-conservas", 0.0047, 0),
+            ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
         ],
     },
     {
@@ -84,11 +84,11 @@ SEED_RECIPES = [
         "tags": "huevos,tradicional,española",
         "user_id": "user-marta",
         "ingredients": [
-            ("Patata", 800, "g", "fruta-verdura", 0.00112, 0),
-            ("Huevos camperos", 6, "ud", "lacteos-huevos", 0.2792, 0),
+            ("Patata", 1, "kg", "fruta-verdura", 1.12, 0),
+            ("Huevos camperos", 1, "docena", "lacteos-huevos", 3.35, 0),
             ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 1),
-            ("Aceite de oliva virgen extra", 250, "g", "despensa-conservas", 0.0047, 0),
-            ("Sal fina", 3, "g", "despensa-conservas", 0.00035, 0),
+            ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
+            ("Sal fina", 1, "ud", "despensa-conservas", 0.35, 0),
         ],
     },
     {
@@ -102,12 +102,12 @@ SEED_RECIPES = [
         "tags": "legumbres,casera,vegetariano",
         "user_id": "user-diego",
         "ingredients": [
-            ("Lentejas pardinas", 300, "g", "despensa-conservas", 0.00185, 0),
-            ("Zanahoria", 300, "g", "fruta-verdura", 0.0012, 0),
+            ("Lentejas pardinas", 1, "ud", "despensa-conservas", 1.85, 0),
+            ("Zanahoria", 1, "ud", "fruta-verdura", 0.18, 0),
             ("Pimiento verde", 1, "ud", "fruta-verdura", 0.55, 0),
-            ("Tomate triturado", 200, "g", "despensa-conservas", 0.001375, 0),
+            ("Tomate triturado", 1, "ud", "despensa-conservas", 0.55, 0),
             ("Cebolla", 1, "ud", "fruta-verdura", 0.45, 0),
-            ("Pimentón dulce", 5, "g", "despensa-conservas", 0.016, 0),
+            ("Pimentón dulce", 1, "ud", "despensa-conservas", 1.20, 0),
         ],
     },
 ]
