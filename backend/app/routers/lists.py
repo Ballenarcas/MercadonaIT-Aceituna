@@ -68,3 +68,11 @@ def clear_list_cart(list_id: str, db: sqlite3.Connection = Depends(get_db)):
     """Vaciar el carrito de la compra de esta lista."""
     count = crud.clear_cart(db, list_id)
     return {"count": count, "message": f"Carrito vaciado ({count} artículos)"}
+
+@router.get("/{list_id}/json")
+def get_list_json(list_id: str, db: sqlite3.Connection = Depends(get_db)):
+    """Devuelve el contenido de la lista en formato JSON estructurado (para IA)."""
+    result = crud.get_list_as_json(db, list_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Lista no encontrada")
+    return result
