@@ -1,11 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
-@layer base {
-  body {
-    @apply bg-slate-100 text-slate-900 antialiased min-h-screen font-sans;
-  }
+body {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Custom Mercadona scrollbar & utilities */

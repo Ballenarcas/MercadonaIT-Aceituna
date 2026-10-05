@@ -63,6 +63,7 @@ export const POPULAR_MERCADONA_CATALOG: CatalogProduct[] = [
 export const INITIAL_SAMPLE_ITEMS: ShoppingItem[] = [
   {
     id: 'init-1',
+    listId: 'default',
     name: 'Hummus de garbanzos clásico',
     categoryId: 'despensa-conservas',
     brand: 'Hacendado',
@@ -71,11 +72,13 @@ export const INITIAL_SAMPLE_ITEMS: ShoppingItem[] = [
     estimatedPrice: 1.45,
     notes: 'Para picar con zanahorias',
     completed: false,
+    inCart: false,
     priority: 'alta',
     createdAt: Date.now() - 100000
   },
   {
     id: 'init-2',
+    listId: 'default',
     name: 'Plátano de Canarias',
     categoryId: 'fruta-verdura',
     brand: 'General',
@@ -84,11 +87,13 @@ export const INITIAL_SAMPLE_ITEMS: ShoppingItem[] = [
     estimatedPrice: 1.95,
     notes: 'Que no estén muy verdes',
     completed: false,
+    inCart: false,
     priority: 'media',
     createdAt: Date.now() - 90000
   },
   {
     id: 'init-3',
+    listId: 'default',
     name: 'Yogur +Proteínas Arándanos 0%',
     categoryId: 'lacteos-huevos',
     brand: 'Hacendado',
@@ -96,11 +101,13 @@ export const INITIAL_SAMPLE_ITEMS: ShoppingItem[] = [
     unit: 'pack',
     estimatedPrice: 1.60,
     completed: true,
+    inCart: true,
     priority: 'media',
     createdAt: Date.now() - 80000
   },
   {
     id: 'init-4',
+    listId: 'default',
     name: 'Detergente líquido Marsella',
     categoryId: 'limpieza',
     brand: 'Bosque Verde',
@@ -109,11 +116,13 @@ export const INITIAL_SAMPLE_ITEMS: ShoppingItem[] = [
     estimatedPrice: 4.10,
     notes: 'Bote grande azul',
     completed: false,
+    inCart: false,
     priority: 'alta',
     createdAt: Date.now() - 70000
   },
   {
     id: 'init-5',
+    listId: 'default',
     name: 'Lomos de Salmón fresco',
     categoryId: 'pescado',
     brand: 'General',
@@ -121,6 +130,7 @@ export const INITIAL_SAMPLE_ITEMS: ShoppingItem[] = [
     unit: 'bandeja',
     estimatedPrice: 6.50,
     completed: false,
+    inCart: false,
     priority: 'media',
     createdAt: Date.now() - 60000
   }

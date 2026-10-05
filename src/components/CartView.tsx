@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, ArrowLeft, Trash2, CheckCircle2, Share2, Sparkles } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Trash2, Share2 } from 'lucide-react';
 import type { ShoppingItem, Category } from '../types';
 import { ItemCard } from './ItemCard';
 

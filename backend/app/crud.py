@@ -320,6 +320,12 @@ def delete_item(conn: sqlite3.Connection, item_id: str) -> bool:
     conn.commit()
     return cursor.rowcount > 0
 
+def clear_all(conn: sqlite3.Connection) -> int:
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM shopping_items")
+    conn.commit()
+    return cursor.rowcount
+
 def clear_completed(conn: sqlite3.Connection, list_id: Optional[str] = None) -> int:
     cursor = conn.cursor()
     if list_id and list_id != "all":

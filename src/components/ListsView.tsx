@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Check, Trash2, ArrowRight, ShoppingCart, Sparkles } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, Sparkles } from 'lucide-react';
 import type { ShoppingList } from '../types';
 
 interface ListsViewProps {
