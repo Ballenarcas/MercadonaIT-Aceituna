@@ -47,10 +47,10 @@ SEED_RECIPES = [
         "tags": "saludable,vegetariano,quinoa",
         "user_id": "user-ana",
         "ingredients": [
-            ("Quinoa", 1, "ud", "despensa-conservas", 2.75, 0),
+            ("Quinoa", 1, "ud", "despensa-conservas", 2.65, 0),
             ("Calabacín", 0.3, "kg", "fruta-verdura", 2.20, 0),
-            ("Pimiento rojo", 1, "ud", "fruta-verdura", 1.10, 0),
-            ("Aguacate", 1, "ud", "fruta-verdura", 1.35, 0),
+            ("Pimiento rojo", 1, "ud", "fruta-verdura", 0.50, 0),
+            ("Aguacate", 1, "ud", "fruta-verdura", 1.65, 0),
             ("Limón", 0.15, "kg", "fruta-verdura", 1.79, 0),
             ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
         ],
@@ -67,7 +67,7 @@ SEED_RECIPES = [
         "user_id": "user-carlos",
         "ingredients": [
             ("Lomos de salmón", 1, "bandeja", "pescado", 6.50, 0),
-            ("Patata", 0.5, "kg", "fruta-verdura", 1.12, 0),
+            ("Patata", 0.5, "kg", "fruta-verdura", 1.55, 0),
             ("Cebolla", 0.2, "kg", "fruta-verdura", 2.00, 0),
             ("Limón", 0.15, "kg", "fruta-verdura", 1.79, 0),
             ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
@@ -84,7 +84,7 @@ SEED_RECIPES = [
         "tags": "huevos,tradicional,española",
         "user_id": "user-marta",
         "ingredients": [
-            ("Patata", 0.8, "kg", "fruta-verdura", 1.12, 0),
+            ("Patata", 0.8, "kg", "fruta-verdura", 1.55, 0),
             ("Huevos camperos", 1, "docena", "lacteos-huevos", 3.35, 0),
             ("Cebolla", 0.2, "kg", "fruta-verdura", 2.00, 1),
             ("Aceite de oliva virgen extra", 1, "litro", "despensa-conservas", 4.70, 0),
@@ -104,7 +104,7 @@ SEED_RECIPES = [
         "ingredients": [
             ("Lentejas pardinas", 1, "ud", "despensa-conservas", 1.85, 0),
             ("Zanahoria", 0.15, "kg", "fruta-verdura", 1.20, 0),
-            ("Pimiento verde", 1, "ud", "fruta-verdura", 0.55, 0),
+            ("Pimiento verde", 1, "ud", "fruta-verdura", 0.50, 0),
             ("Tomate triturado", 1, "ud", "despensa-conservas", 0.55, 0),
             ("Cebolla", 0.2, "kg", "fruta-verdura", 2.00, 0),
             ("Pimentón dulce", 1, "ud", "despensa-conservas", 1.20, 0),
