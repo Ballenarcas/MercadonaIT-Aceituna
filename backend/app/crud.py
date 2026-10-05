@@ -543,6 +543,7 @@ def get_list_as_json(conn: sqlite3.Connection, list_id: str) -> Dict[str, Any]:
             "quantity": i.quantity,
             "unit": i.unit,
             "categoryId": i.categoryId,
+            "brand": i.brand,
             "estimatedPrice": i.estimatedPrice,
             "notes": i.notes,
             "priority": i.priority,

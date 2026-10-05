@@ -8,7 +8,7 @@ The bot can:
  - Read and edit the shopping list JSON directly
 
 Requires GROQ_API_KEY env-var to be set.
-Optional: GROQ_MODEL (default: llama-3.3-70b-versatile).
+Optional: GROQ_MODEL (default: openai/gpt-oss-120b, gratis sin tarjeta).
 """
 
 import json
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/chat", tags=["AI Chat"])
 # ── Groq setup ───────────────────────────────────────────────────────────────
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 def _get_client() -> Groq:
@@ -182,14 +182,25 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
     reply_text = ""
 
     for _ in range(MAX_TOOL_ROUNDS):
-        completion = client.chat.completions.create(
-            model=model,
-            messages=messages,  # type: ignore
-            tools=TOOLS,  # type: ignore
-            tool_choice="auto",
-            temperature=0.7,
-            max_tokens=1024,
-        )
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=messages,  # type: ignore
+                tools=TOOLS,  # type: ignore
+                tool_choice="auto",
+                temperature=0.7,
+                max_tokens=1024,
+            )
+        except Exception as exc:
+            # Modelo retirado/sin acceso -> 502 con mensaje accionable
+            if "model" in str(exc).lower() or "not found" in str(exc).lower():
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"El modelo '{model}' no existe o fue retirado por Groq. "
+                    "Actualiza GROQ_MODEL en tu .env (p. ej. openai/gpt-oss-120b). "
+                    "Modelos vigentes: https://console.groq.com/docs/models",
+                )
+            raise
         assistant_msg = completion.choices[0].message
 
         tool_calls = getattr(assistant_msg, "tool_calls", None) or []
