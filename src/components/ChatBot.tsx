@@ -293,8 +293,8 @@ export const ChatBot: React.FC<ChatBotProps> = ({
     messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const handleSend = async (message?: string) => {
+    const trimmed = (message ?? input).trim();
     if (!trimmed || isSending) return;
 
     const userMessage: ChatMessage = { role: 'user', content: trimmed };
@@ -380,9 +380,13 @@ export const ChatBot: React.FC<ChatBotProps> = ({
                     {msg.recipeSuggestions && msg.recipeSuggestions.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {msg.recipeSuggestions.map((recipe) => (
-                          <div
+                          <button
+                            type="button"
                             key={recipe.id}
-                            className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-left"
+                            onClick={() => handleSend(recipe.name)}
+                            disabled={isSending}
+                            className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-left transition-colors hover:border-amber-400 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            title={`Consultar receta: ${recipe.name}`}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs font-semibold text-amber-800">{recipe.name}</span>
@@ -402,7 +406,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({
                                 ))}
                               </div>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -424,7 +428,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({
             />
             <button
               type="button"
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || isSending}
               className="rounded-full bg-[#00703c] p-2.5 text-white transition-colors hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
