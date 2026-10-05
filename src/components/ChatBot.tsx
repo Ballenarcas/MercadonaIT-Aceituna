@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, ShoppingCart, ChefHat, Loader2 } from 'lucide-react';
-import type { ChatMessage, ShoppingList } from '../types';
+import { X, Send, Bot, ShoppingCart, ChefHat, Loader2, Check, Plus } from 'lucide-react';
+import type { ChatMessage, ShoppingList, MissingIngredient } from '../types';
 import { api } from '../services/api';
 
 interface ChatBotProps {

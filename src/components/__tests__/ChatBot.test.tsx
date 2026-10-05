@@ -31,11 +31,11 @@ describe('ChatBot component', () => {
   it('renders floating button and opens chat window on click', () => {
     render(<ChatBot activeList={mockActiveList} onIngredientAdded={vi.fn()} />);
 
-    const openBtn = screen.getByTitle('AceitunAI - Asistente de cocina');
+    const openBtn = screen.getByTitle('mercadITo - Asistente de cocina');
     expect(openBtn).toBeInTheDocument();
 
     fireEvent.click(openBtn);
-    expect(screen.getAllByText('AceitunAI').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('mercadITo').length).toBeGreaterThan(0);
     expect(screen.getByPlaceholderText(/Escribe ingredientes o una receta/i)).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('ChatBot component', () => {
     render(<ChatBot activeList={mockActiveList} onIngredientAdded={onIngredientAdded} />);
 
     // Open chat
-    fireEvent.click(screen.getByTitle('AceitunAI - Asistente de cocina'));
+    fireEvent.click(screen.getByTitle('mercadITo - Asistente de cocina'));
 
     // Type recipe
     const input = screen.getByPlaceholderText(/Escribe ingredientes o una receta/i);
@@ -141,7 +141,7 @@ describe('ChatBot component', () => {
 
     render(<ChatBot activeList={mockActiveList} onIngredientAdded={onIngredientAdded} />);
 
-    fireEvent.click(screen.getByTitle('AceitunAI - Asistente de cocina'));
+    fireEvent.click(screen.getByTitle('mercadITo - Asistente de cocina'));
 
     const input = screen.getByPlaceholderText(/Escribe ingredientes o una receta/i);
     fireEvent.change(input, { target: { value: 'Tortilla de patatas' } });
@@ -189,7 +189,7 @@ describe('ChatBot component', () => {
 
     render(<ChatBot activeList={mockActiveList} onIngredientAdded={vi.fn()} />);
 
-    fireEvent.click(screen.getByTitle('AceitunAI - Asistente de cocina'));
+    fireEvent.click(screen.getByTitle('mercadITo - Asistente de cocina'));
 
     const input = screen.getByPlaceholderText(/Escribe ingredientes o una receta/i);
     fireEvent.change(input, { target: { value: 'Tengo arroz y huevos' } });
