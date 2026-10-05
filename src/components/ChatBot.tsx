@@ -1,38 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, ShoppingCart, ChefHat, Loader2, Check, Plus } from 'lucide-react';
-import type { ChatMessage, ShoppingList, MissingIngredient } from '../types';
+import React, { useState } from 'react';
+import { Check, Loader2, MessageSquareText, Plus, Send, ShoppingCart } from 'lucide-react';
+import mercaditoImage from '../assets/Mercadito.png';
 import { api } from '../services/api';
+import type { ChatMessage, MissingIngredient, ShoppingList } from '../types';
 
 interface ChatBotProps {
-  activeList: ShoppingList;
-  onIngredientAdded: () => void;
+  activeList?: ShoppingList;
+  onIngredientAdded?: () => void;
 }
+
+const DEFAULT_LIST: ShoppingList = {
+  id: 'default',
+  name: 'Compra Principal',
+  emoji: '🛒',
+  color: '#059669',
+  itemCount: 0,
+  cartCount: 0,
+  totalEstimated: 0,
+  cartEstimated: 0,
+  createdAt: Date.now(),
+};
 
 const WELCOME_MESSAGE: ChatMessage = {
   role: 'assistant',
   content:
-    '¡Hola! Soy **AceitunAI** 🫒, tu asistente de cocina y compras.\n\nPuedo ayudarte a:\n• 🍽️ **Recomendar recetas** según lo que te apetezca\n• 🛒 **Añadir ingredientes** a tu lista de la compra\n• 📋 **Ver tu lista** actual y sugerirte complementos\n\n¿Qué te apetece cocinar hoy?',
+    '¡Hola! Soy **mercadITo** 🛒, tu asistente de cocina y compras.\n\nPuedo ayudarte a:\n• 🍽️ **Recomendar recetas** según lo que te apetezca\n• 🛒 **Añadir ingredientes** a tu lista de la compra\n• 📋 **Ver tu lista** actual y sugerirte complementos\n\n¿Qué te apetece cocinar hoy?',
 };
-
-function formatMarkdown(text: string) {
-  const lines = text.split('\n');
-  return lines.map((line, i) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
-      const content = trimmed.slice(2);
-      return (
-        <li key={i} className="ml-3 text-sm">
-          <span dangerouslySetInnerHTML={{ __html: inlineMd(content) }} />
-        </li>
-      );
-    }
-    return (
-      <p key={i} className="text-sm leading-relaxed">
-        <span dangerouslySetInnerHTML={{ __html: inlineMd(line) }} />
-      </p>
-    );
-  });
-}
 
 function inlineMd(text: string) {
   return text
@@ -41,7 +34,31 @@ function inlineMd(text: string) {
     .replace(/_([^_\n]+)_/g, '<em>$1</em>');
 }
 
-// ── Interactive Checklist of Missing Ingredients ─────────────────────────────
+function formatMarkdown(text: string) {
+  const lines = text.split('\n');
+
+  return lines.map((line, i) => {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
+      return (
+        <li key={i} className="ml-4 text-sm leading-relaxed text-slate-700">
+          <span dangerouslySetInnerHTML={{ __html: inlineMd(trimmed.slice(2)) }} />
+        </li>
+      );
+    }
+
+    if (!trimmed) {
+      return <div key={i} className="h-2" />;
+    }
+
+    return (
+      <p key={i} className="text-sm leading-relaxed text-slate-700">
+        <span dangerouslySetInnerHTML={{ __html: inlineMd(trimmed) }} />
+      </p>
+    );
+  });
+}
 
 interface MissingIngredientsProps {
   recipeName?: string;
@@ -56,9 +73,7 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
   activeListId,
   onAdded,
 }) => {
-  const [checkedIndices, setCheckedIndices] = useState<Set<number>>(
-    () => new Set(ingredients.map((_, idx) => idx))
-  );
+  const [checkedIndices, setCheckedIndices] = useState<Set<number>>(() => new Set(ingredients.map((_, idx) => idx)));
   const [addingToList, setAddingToList] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedToListSuccess, setAddedToListSuccess] = useState(false);
@@ -92,24 +107,26 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
         listId: activeListId,
         categoryId: item.categoryId || 'otros',
         brand: (item.brand as any) || 'Hacendado',
-        quantity: item.quantity || 1.0,
+        quantity: item.quantity || 1,
         unit: (item.unit as any) || 'ud',
         estimatedPrice: item.estimatedPrice,
-        inCart: inCart,
+        inCart,
         completed: false,
         notes: item.notes || (recipeName ? `De receta: ${recipeName}` : 'De receta'),
         priority: 'media' as const,
       }));
 
       await api.createItemsBatch(activeListId, itemsToCreate);
+
       if (inCart) {
         setAddedToCartSuccess(true);
       } else {
         setAddedToListSuccess(true);
       }
+
       onAdded();
-    } catch (e) {
-      console.error(`Error adding missing ingredients to ${inCart ? 'cart' : 'list'}:`, e);
+    } catch (error) {
+      console.error(`Error adding missing ingredients to ${inCart ? 'cart' : 'list'}:`, error);
     } finally {
       if (inCart) {
         setAddingToCart(false);
@@ -122,38 +139,41 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
   const anyLoading = addingToList || addingToCart;
 
   return (
-    <div className="mt-2.5 bg-emerald-50/90 border border-emerald-200 rounded-xl p-3 shadow-xs">
-      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 mb-2">
-        <ShoppingCart className="w-3.5 h-3.5 text-emerald-700" />
-        <span>Ingredientes faltantes {recipeName ? `(${recipeName})` : ''}:</span>
+    <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 shadow-sm">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+        <ShoppingCart className="h-3.5 w-3.5 text-emerald-700" />
+        <span>
+          Ingredientes faltantes {recipeName ? `(${recipeName})` : ''}:
+        </span>
       </div>
 
-      <div className="space-y-1.5 mb-3 max-h-48 overflow-y-auto pr-1">
+      <div className="mb-3 max-h-48 space-y-1.5 overflow-y-auto pr-1">
         {ingredients.map((ing, idx) => {
           const isChecked = checkedIndices.has(idx);
+
           return (
             <label
-              key={idx}
-              className={`flex items-start gap-2 p-1.5 rounded-lg text-xs cursor-pointer select-none transition-colors ${
-                isChecked ? 'bg-white text-slate-800 shadow-2xs' : 'text-slate-500 hover:bg-white/60'
+              key={`${ing.name}-${idx}`}
+              className={`flex cursor-pointer items-start gap-2 rounded-lg p-1.5 text-xs transition-colors ${
+                isChecked ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:bg-white/60'
               }`}
             >
               <input
                 type="checkbox"
                 checked={isChecked}
                 onChange={() => toggleIndex(idx)}
-                className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                className="mt-0.5 rounded text-emerald-600 accent-emerald-600"
               />
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <span className={`font-medium ${isChecked ? 'text-slate-800' : 'text-slate-500 line-through'}`}>
                   {ing.name}
                 </span>
-                <span className="text-[11px] text-slate-500 ml-1">
+                <span className="ml-1 text-[11px] text-slate-500">
                   ({ing.quantity} {ing.unit})
                 </span>
               </div>
               {ing.estimatedPrice !== undefined && ing.estimatedPrice !== null && (
-                <span className="text-[11px] font-semibold text-emerald-700 whitespace-nowrap">
+                <span className="whitespace-nowrap text-[11px] font-semibold text-emerald-700">
                   {((ing.quantity || 0) * ing.estimatedPrice).toFixed(2)} €
                 </span>
               )}
@@ -162,62 +182,62 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
         })}
       </div>
 
-      <div className="pt-2 border-t border-emerald-200/80 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] text-emerald-700 font-medium">
-          {checkedIndices.size} seleccionados
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-emerald-200/80 pt-2">
+        <span className="text-[11px] font-medium text-emerald-700">{checkedIndices.size} seleccionados</span>
         <div className="flex flex-wrap items-center gap-1.5">
           <button
+            type="button"
             onClick={() => handleAddItems(false)}
             disabled={checkedIndices.size === 0 || anyLoading || addedToListSuccess}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
               addedToListSuccess
-                ? 'bg-green-600 text-white cursor-default'
-                : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-xs disabled:opacity-40 disabled:cursor-not-allowed'
+                ? 'cursor-default bg-green-600 text-white'
+                : 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40'
             }`}
             title="Añadir a la lista de la compra"
           >
             {addingToList ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span>Añadiendo…</span>
               </>
             ) : addedToListSuccess ? (
               <>
-                <Check className="w-3.5 h-3.5" />
+                <Check className="h-3.5 w-3.5" />
                 <span>¡En lista!</span>
               </>
             ) : (
               <>
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="h-3.5 w-3.5" />
                 <span>Añadir a la lista</span>
               </>
             )}
           </button>
 
           <button
+            type="button"
             onClick={() => handleAddItems(true)}
             disabled={checkedIndices.size === 0 || anyLoading || addedToCartSuccess}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+            className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
               addedToCartSuccess
-                ? 'bg-amber-600 text-white cursor-default'
-                : 'bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white shadow-xs disabled:opacity-40 disabled:cursor-not-allowed'
+                ? 'cursor-default bg-amber-600 text-white'
+                : 'bg-amber-500 text-white shadow-sm hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-40'
             }`}
             title="Añadir directamente al carrito de la compra"
           >
             {addingToCart ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span>Añadiendo…</span>
               </>
             ) : addedToCartSuccess ? (
               <>
-                <Check className="w-3.5 h-3.5" />
+                <Check className="h-3.5 w-3.5" />
                 <span>¡En carrito!</span>
               </>
             ) : (
               <>
-                <ShoppingCart className="w-3.5 h-3.5" />
+                <ShoppingCart className="h-3.5 w-3.5" />
                 <span>Añadir al carrito</span>
               </>
             )}
@@ -228,245 +248,165 @@ const MissingIngredientsChecklist: React.FC<MissingIngredientsProps> = ({
   );
 };
 
-// ── Main ChatBot Component ───────────────────────────────────────────────────
-
-export const ChatBot: React.FC<ChatBotProps> = ({ activeList, onIngredientAdded }) => {
-  const [open, setOpen] = useState(false);
+export const ChatBot: React.FC<ChatBotProps> = ({
+  activeList = DEFAULT_LIST,
+  onIngredientAdded = () => undefined,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [isSending, setIsSending] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' });
-      inputRef.current?.focus();
-    }
-  }, [open, messages]);
+  const handleSend = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isSending) return;
 
-  const sendMessage = async (overrideText?: string) => {
-    const text = (overrideText ?? input).trim();
-    if (!text || loading) return;
-
-    const userMsg: ChatMessage = { role: 'user', content: text };
-    setMessages((prev) => [...prev, userMsg]);
-    if (!overrideText) setInput('');
-    setLoading(true);
+    const userMessage: ChatMessage = { role: 'user', content: trimmed };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setIsSending(true);
 
     try {
-      // Build history excluding welcome message
-      const history = messages.slice(1).map((m) => ({ role: m.role, content: m.content }));
-      const res = await api.sendChatMessage(text, activeList.id, history);
-
-      const assistantMsg: ChatMessage = {
+      const response = await api.sendChatMessage(trimmed, activeList.id, messages);
+      const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: res.reply,
-        addedIngredients: res.addedIngredients,
-        suggestedRecipes: res.suggestedRecipes,
-        recipeSuggestions: res.recipeSuggestions,
-        missingIngredients: res.missingIngredients,
-        recipeName: res.recipeName,
+        content: response.reply || 'He recibido tu mensaje. Pronto te ayudaré con tus listas o recetas.',
+        addedIngredients: response.addedIngredients,
+        suggestedRecipes: response.suggestedRecipes,
+        recipeSuggestions: response.recipeSuggestions,
+        missingIngredients: response.missingIngredients,
+        recipeName: response.recipeName,
       };
-      setMessages((prev) => [...prev, assistantMsg]);
 
-      if (res.addedIngredients && res.addedIngredients.length > 0) {
-        onIngredientAdded();
-      }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error sending chat message:', error);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: `❌ ${errorMessage}\n\nAsegúrate de que el backend está activo.`,
+          content: 'No he podido contactar con el asistente. Inténtalo de nuevo en un momento.',
         },
       ]);
     } finally {
-      setLoading(false);
+      setIsSending(false);
     }
   };
-
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const QUICK_PROMPTS = [
-    'Tengo arroz, tomate y huevos',
-    'Macarrones a la boloñesa',
-    'Tengo pollo, aceite y sal',
-    '¿Qué tengo en la lista?',
-  ];
 
   return (
     <>
-      {/* Floating button */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center cursor-pointer transition-all ${
-          open ? 'bg-slate-700 hover:bg-slate-800' : 'bg-emerald-600 hover:bg-emerald-700'
-        }`}
-        title="mercadITo - Asistente de cocina"
-      >
-        {open ? (
-          <X className="w-6 h-6 text-white" />
-        ) : (
-          <div className="relative">
-            <Bot className="w-7 h-7 text-white" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white" />
-          </div>
-        )}
-      </button>
-
-      {/* Chat window */}
-      {open && (
-        <div className="fixed bottom-24 right-6 z-40 w-[380px] max-w-[calc(100vw-3rem)] h-[560px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-fadeIn">
-          {/* Header */}
-          <div className="bg-emerald-700 text-white px-4 py-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-lg">🫒</div>
-            <div className="flex-1">
-              <p className="font-bold text-sm">mercadITo</p>
-              <p className="text-[11px] text-emerald-200">
-                Lista activa: {activeList.emoji} {activeList.name}
-              </p>
+      {isOpen && (
+        <div className="fixed bottom-24 right-6 z-50 flex h-[500px] max-h-[80vh] w-80 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl sm:w-96">
+          <div className="flex items-center justify-between bg-[#00703c] px-4 py-4 text-white shadow-md">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center rounded-full bg-white p-1.5">
+                <MessageSquareText className="h-5 w-5 text-[#00703c]" />
+              </div>
+              <span className="text-lg font-semibold">mercadITo</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="rounded-full p-1.5 transition-colors hover:bg-green-700"
+              aria-label="Cerrar chat"
+            >
+              <Plus className="h-5 w-5 rotate-45" />
+            </button>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
+            <div className="flex flex-col gap-4">
+              {messages.map((msg, idx) => (
                 <div
-                  className={`max-w-[90%] rounded-2xl px-3 py-2 ${
-                    msg.role === 'user'
-                      ? 'bg-emerald-600 text-white rounded-br-sm'
-                      : 'bg-slate-100 text-slate-800 rounded-bl-sm'
-                  }`}
+                  key={`${msg.role}-${idx}`}
+                  className={`max-w-[85%] ${msg.role === 'user' ? 'self-end' : 'self-start'}`}
                 >
-                  <div className={`space-y-1 ${msg.role === 'user' ? 'text-white' : ''}`}>
-                    {formatMarkdown(msg.content)}
-                  </div>
+                  <div
+                    className={`rounded-2xl p-3 text-sm shadow-sm ${
+                      msg.role === 'user'
+                        ? 'rounded-br-none bg-[#00703c] text-white'
+                        : 'rounded-bl-none border border-gray-100 bg-white text-gray-800'
+                    }`}
+                  >
+                    {msg.content && formatMarkdown(msg.content)}
 
-                  {/* Interactive missing ingredients checklist */}
-                  {msg.missingIngredients && msg.missingIngredients.length > 0 && (
-                    <MissingIngredientsChecklist
-                      recipeName={msg.recipeName}
-                      ingredients={msg.missingIngredients}
-                      activeListId={activeList.id}
-                      onAdded={onIngredientAdded}
-                    />
-                  )}
+                    {msg.missingIngredients && msg.missingIngredients.length > 0 && (
+                      <MissingIngredientsChecklist
+                        recipeName={msg.recipeName}
+                        ingredients={msg.missingIngredients}
+                        activeListId={activeList.id}
+                        onAdded={onIngredientAdded}
+                      />
+                    )}
 
-                  {/* Suggested recipes chips */}
-                  {((msg.recipeSuggestions && msg.recipeSuggestions.length > 0) ||
-                    (msg.suggestedRecipes && msg.suggestedRecipes.length > 0 && (!msg.missingIngredients || msg.missingIngredients.length === 0))) && (
-                    <div className="mt-2.5 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
-                      <p className="text-[11px] font-bold text-amber-800 flex items-center gap-1 mb-2">
-                        <ChefHat className="w-3.5 h-3.5 text-amber-700" />
-                        Recetas posibles encontradas (haz clic para ver ingredientes):
-                      </p>
-                      <div className="flex flex-col gap-1.5">
-                        {msg.recipeSuggestions && msg.recipeSuggestions.length > 0
-                          ? msg.recipeSuggestions.map((rec) => (
-                              <button
-                                key={rec.id || rec.name}
-                                onClick={() => sendMessage(rec.name)}
-                                className="flex items-center justify-between p-2 rounded-lg bg-white border border-amber-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-left transition-all cursor-pointer group"
-                              >
-                                <span className="text-xs font-semibold text-slate-800 group-hover:text-emerald-700 flex items-center gap-1.5">
-                                  <span>{rec.imageEmoji || '🍽️'}</span>
-                                  <span>{rec.name}</span>
-                                </span>
-                                {rec.matchScore > 0 && (
-                                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-full">
-                                    {rec.matchScore}%
+                    {msg.recipeSuggestions && msg.recipeSuggestions.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {msg.recipeSuggestions.map((recipe) => (
+                          <div
+                            key={recipe.id}
+                            className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-left"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-amber-800">{recipe.name}</span>
+                              <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
+                                {recipe.matchScore}%
+                              </span>
+                            </div>
+                            {recipe.matchedIngredients.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {recipe.matchedIngredients.map((ingredient, ingredientIndex) => (
+                                  <span
+                                    key={`${recipe.id}-${ingredient}-${ingredientIndex}`}
+                                    className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-slate-600"
+                                  >
+                                    {ingredient}
                                   </span>
-                                )}
-                              </button>
-                            ))
-                          : msg.suggestedRecipes?.map((name) => (
-                              <button
-                                key={name}
-                                onClick={() => sendMessage(name)}
-                                className="flex items-center gap-1.5 p-2 rounded-lg bg-white border border-amber-200 hover:border-emerald-500 hover:bg-emerald-50/50 text-left text-xs font-semibold text-slate-800 group-hover:text-emerald-700 transition-all cursor-pointer"
-                              >
-                                <span>🍽️</span>
-                                <span>{name}</span>
-                              </button>
-                            ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Side effects: added ingredients summary */}
-                  {msg.addedIngredients && msg.addedIngredients.length > 0 && (
-                    <div className="mt-2 bg-green-50 border border-green-200 rounded-xl p-2">
-                      <p className="text-[11px] font-bold text-green-700 flex items-center gap-1 mb-1">
-                        <ShoppingCart className="w-3 h-3" />
-                        Añadido a tu lista:
-                      </p>
-                      <ul className="space-y-0.5">
-                        {msg.addedIngredients.map((name) => (
-                          <li key={name} className="text-[11px] text-green-700">✓ {name}</li>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         ))}
-                      </ul>
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-slate-100 rounded-2xl rounded-bl-sm px-3 py-2.5 flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
-                  <span className="text-xs text-slate-500">AceitunAI está pensando…</span>
-                </div>
-              </div>
-            )}
-
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Quick prompts */}
-          {messages.length === 1 && (
-            <div className="px-3 pb-2 flex flex-wrap gap-1.5">
-              {QUICK_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => { setInput(prompt); inputRef.current?.focus(); }}
-                  className="text-[11px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full hover:bg-emerald-100 cursor-pointer font-medium transition-colors"
-                >
-                  {prompt}
-                </button>
               ))}
             </div>
-          )}
+          </div>
 
-          {/* Input */}
-          <div className="border-t border-slate-200 p-2 flex gap-2">
+          <div className="flex items-center gap-2 border-t border-gray-100 bg-white p-4">
             <input
-              ref={inputRef}
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Escribe ingredientes o una receta…"
-              className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              disabled={loading}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Escribe ingredientes o una receta"
+              className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-[#00703c] focus:bg-white"
             />
             <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || loading}
-              className="w-9 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-40 transition-colors"
+              type="button"
+              onClick={handleSend}
+              disabled={!input.trim() || isSending}
+              className="rounded-full bg-[#00703c] p-2.5 text-white transition-colors hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Send className="w-4 h-4" />
+              {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </button>
           </div>
         </div>
       )}
+
+      {!isOpen && (
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-[#00703c] bg-white shadow-2xl transition-transform hover:scale-105"
+          title="mercadITo - Asistente de cocina"
+        >
+          <img src={mercaditoImage} alt="Mercadito" className="h-full w-full object-cover" />
+        </button>
+      )}
     </>
   );
 };
+
+export default ChatBot;

@@ -1,122 +1,58 @@
 import React from 'react';
-import { Share2, PlusCircle, RotateCcw, Server } from 'lucide-react';
-import type { ShoppingList } from '../types';
+import logoMercadona from '../assets/Logo_Mercadona.png'; 
 
-interface HeaderProps {
-  onOpenCatalog: () => void;
-  onOpenShare: () => void;
-  onResetSample: () => void;
-  isBackendConnected: boolean | null;
-  onRefreshBackend: () => void;
-  lists: ShoppingList[];
-  activeListId: string;
-  onSelectList: (id: string) => void;
-  onOpenListsTab: () => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({
-  onOpenCatalog,
-  onOpenShare,
-  onResetSample,
-  isBackendConnected,
-  onRefreshBackend,
-  lists,
-  activeListId,
-  onSelectList,
-  onOpenListsTab,
-}) => {
+const Header: React.FC = () => {
   return (
-    <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
-      <div className="max-w-4xl mx-auto px-4 py-3 sm:py-3.5">
-        <div className="flex items-center justify-between gap-2">
-          {/* Logo & Brand & Active List Selector */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black text-xl shadow-sm tracking-tight border-2 border-amber-300">
-              M
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-none text-white">
-                  MERCADONA
-                </h1>
-                <span className="text-[10px] uppercase font-bold tracking-widest bg-amber-400 text-emerald-950 px-1.5 py-0.5 rounded">
-                  Lista & Carrito
-                </span>
+    <header className="w-full flex flex-col font-sans">
+      {/* Franja superior (Blanca) */}
+      <div className="w-full bg-white text-gray-600 text-sm">
+        <div className="flex justify-end items-center px-6 py-2 space-x-6 border-b border-gray-100">
+          <a href="#" className="flex items-center hover:text-green-700">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            Supermercados
+          </a>
+          <a href="#" className="flex items-center hover:text-green-700">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            Empleo
+          </a>
+          <select className="bg-transparent focus:outline-none cursor-pointer">
+            <option>Español</option>
+            <option>English</option>
+          </select>
+        </div>
 
-                {/* Backend Badge */}
-                <button
-                  type="button"
-                  onClick={onRefreshBackend}
-                  title={
-                    isBackendConnected
-                      ? 'Conectado al backend FastAPI (puerto 8000). Clic para refrescar.'
-                      : 'Modo local (FastAPI no detectado en http://localhost:8000). Clic para reintentar.'
-                  }
-                  className={`hidden md:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
-                    isBackendConnected
-                      ? 'bg-emerald-800 text-emerald-200 border-emerald-600 hover:bg-emerald-900'
-                      : 'bg-amber-950/40 text-amber-200 border-amber-500/40 hover:bg-amber-900/50'
-                  }`}
-                >
-                  <Server className="w-2.5 h-2.5" />
-                  <span>{isBackendConnected ? 'FastAPI' : 'Modo Local'}</span>
-                </button>
-              </div>
-
-              {/* Active list selector in header */}
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-xs text-emerald-200 hidden sm:inline">Lista activa:</span>
-                <select
-                  value={activeListId}
-                  onChange={(e) => onSelectList(e.target.value)}
-                  className="bg-emerald-800/90 text-white font-bold text-xs px-2 py-0.5 rounded border border-emerald-600/70 outline-none cursor-pointer hover:bg-emerald-800"
-                >
-                  {lists.map((l) => (
-                    <option key={l.id} value={l.id} className="bg-slate-900 text-white">
-                      {l.emoji} {l.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={onOpenListsTab}
-                  className="text-[11px] text-emerald-200 hover:text-white underline decoration-emerald-400 cursor-pointer hidden sm:inline ml-1"
-                >
-                  gestionar
-                </button>
-              </div>
-            </div>
+        {/* Zona del Logo real y Botón de Compra */}
+        <div className="flex justify-between items-center px-6 py-4">
+          <div className="flex items-center space-x-3">
+            {/* Logo de Mercadona en PNG importado desde assets */}
+            <img 
+              src={logoMercadona} 
+              alt="Logo Mercadona" 
+              className="h-12 w-auto object-contain"
+            />
+            <h1 className="text-4xl font-black text-[#00703c] tracking-tighter">MERCADONA</h1>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={onOpenCatalog}
-              className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg text-xs sm:text-sm shadow-xs transition-all cursor-pointer active:scale-95"
-              title="Abrir catálogo de productos frecuentes de Mercadona"
-            >
-              <PlusCircle className="w-4 h-4 text-emerald-900" />
-              <span className="hidden sm:inline">Catálogo</span>
-            </button>
-
-            <button
-              onClick={onOpenShare}
-              className="p-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg transition-colors cursor-pointer"
-              title="Compartir lista y carrito (WhatsApp)"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={onResetSample}
-              className="p-2 text-emerald-200 hover:text-white hover:bg-emerald-800 rounded-lg transition-colors cursor-pointer"
-              title="Restaurar ejemplos de prueba"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
+          
+          <button className="bg-[#e23000] text-white px-6 py-2.5 rounded-full font-semibold flex items-center hover:bg-orange-700 transition-colors">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            Compra online
+          </button>
         </div>
       </div>
+
+      {/* Franja de Navegación Verde */}
+      <nav className="w-full bg-[#00703c] text-white px-6 py-3">
+        <ul className="flex space-x-8 text-sm font-medium">
+          <li className="flex items-center cursor-pointer hover:text-green-200">Conócenos <span className="ml-1 text-xs">▼</span></li>
+          <li className="flex items-center cursor-pointer hover:text-green-200">Consejos <span className="ml-1 text-xs">▼</span></li>
+          <li className="cursor-pointer hover:text-green-200">Actualidad</li>
+          <li className="cursor-pointer hover:text-green-200">Atención al Cliente</li>
+          <li className="flex items-center cursor-pointer hover:text-green-200">Cuidemos el Planeta <span className="ml-1 text-xs">▼</span></li>
+          <li className="cursor-pointer hover:text-green-200">Mercadona IT</li>
+        </ul>
+      </nav>
     </header>
   );
 };
+
+export default Header;
