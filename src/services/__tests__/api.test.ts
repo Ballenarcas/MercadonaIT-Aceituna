@@ -152,4 +152,35 @@ describe('api service', () => {
     const text = await api.getShareText('default');
     expect(text).toBe('Texto compartido Mercadona');
   });
+
+  it('creates and updates recipes correctly', async () => {
+    const mockRecipe = {
+      id: 'rec_1',
+      name: 'Salmón',
+      category: 'cena',
+      servings: 2,
+      prepTimeMin: 20,
+      imageEmoji: '🐟',
+      tags: '',
+      ingredients: [],
+      createdAt: 100,
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockRecipe,
+    });
+
+    const created = await api.createRecipe(mockRecipe);
+    expect(created).toEqual(mockRecipe);
+
+    const updatedRecipe = { ...mockRecipe, name: 'Salmón al horno' };
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => updatedRecipe,
+    });
+
+    const updated = await api.updateRecipe('rec_1', { name: 'Salmón al horno' });
+    expect(updated.name).toBe('Salmón al horno');
+  });
 });

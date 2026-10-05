@@ -63,11 +63,43 @@ def test_create_and_delete_recipe(client):
     list_res = client.get("/api/recipes")
     assert any(r["id"] == recipe_id for r in list_res.json())
 
+    # Update recipe
+    update_payload = {
+        "name": "Tortilla española con cebolla caramelizada",
+        "servings": 6,
+        "ingredients": [
+            {
+                "name": "Patatas selección",
+                "quantity": 1.5,
+                "unit": "kg",
+                "categoryId": "fruta-verdura",
+            },
+            {
+                "name": "Cebollas dulces",
+                "quantity": 2.0,
+                "unit": "ud",
+                "categoryId": "fruta-verdura",
+            },
+            {
+                "name": "Huevos camperos",
+                "quantity": 8.0,
+                "unit": "ud",
+                "categoryId": "lacteos-huevos",
+            }
+        ]
+    }
+    update_res = client.put(f"/api/recipes/{recipe_id}", json=update_payload)
+    assert update_res.status_code == 200
+    updated = update_res.json()
+    assert updated["name"] == "Tortilla española con cebolla caramelizada"
+    assert updated["servings"] == 6
+    assert len(updated["ingredients"]) == 3
+
     # Add recipe to list
     add_res = client.post(f"/api/recipes/{recipe_id}/add-to-list", json={"listId": "default", "servings": 4})
     assert add_res.status_code == 200
     items_added = add_res.json()
-    assert len(items_added) == 2
+    assert len(items_added) == 3
 
     # Delete recipe
     del_res = client.delete(f"/api/recipes/{recipe_id}")

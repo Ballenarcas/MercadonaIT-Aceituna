@@ -510,7 +510,19 @@ def update_recipe(conn: sqlite3.Connection, recipe_id: str, recipe_in: RecipeUpd
     if clauses:
         params.append(recipe_id)
         conn.cursor().execute(f"UPDATE recipes SET {', '.join(clauses)} WHERE id = ?", params)
-        conn.commit()
+
+    if recipe_in.ingredients is not None:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM recipe_ingredients WHERE recipe_id = ?", (recipe_id,))
+        for ing in recipe_in.ingredients:
+            ing_id = f"ing_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
+            cursor.execute("""
+                INSERT INTO recipe_ingredients (id, recipe_id, name, quantity, unit, category_id, estimated_price, is_optional)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (ing_id, recipe_id, ing.name, ing.quantity, ing.unit, ing.categoryId,
+                  ing.estimatedPrice, 1 if ing.isOptional else 0))
+
+    conn.commit()
     return get_recipe(conn, recipe_id)
 
 def delete_recipe(conn: sqlite3.Connection, recipe_id: str) -> bool:

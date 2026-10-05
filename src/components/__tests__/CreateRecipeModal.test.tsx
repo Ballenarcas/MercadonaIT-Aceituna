@@ -6,6 +6,7 @@ import { api } from '../../services/api';
 vi.mock('../../services/api', () => ({
   api: {
     createRecipe: vi.fn(),
+    updateRecipe: vi.fn(),
   },
 }));
 
@@ -80,6 +81,59 @@ describe('CreateRecipeModal component', () => {
         })
       );
       expect(mockOnCreated).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
+    });
+  });
+
+  it('renders in edit mode and updates recipe via api.updateRecipe', async () => {
+    const mockOnUpdated = vi.fn();
+    const mockOnClose = vi.fn();
+
+    const existingRecipe = {
+      id: 'recipe_123',
+      name: 'Tortilla de patatas',
+      description: 'Con cebolla',
+      category: 'cena',
+      servings: 4,
+      prepTimeMin: 30,
+      imageEmoji: '🍳',
+      tags: 'huevo',
+      ingredients: [
+        { id: 'i1', recipeId: 'recipe_123', name: 'Patatas', quantity: 4, unit: 'ud' as const, categoryId: 'otros', isOptional: false },
+      ],
+      createdAt: 100,
+    };
+
+    vi.mocked(api.updateRecipe).mockResolvedValue({
+      ...existingRecipe,
+      name: 'Tortilla de patatas gourmet',
+    });
+
+    render(
+      <CreateRecipeModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onCreated={vi.fn()}
+        recipeToEdit={existingRecipe}
+        onUpdated={mockOnUpdated}
+      />
+    );
+
+    expect(screen.getByText('Editar receta')).toBeInTheDocument();
+    const nameInput = screen.getByDisplayValue('Tortilla de patatas');
+    fireEvent.change(nameInput, { target: { value: 'Tortilla de patatas gourmet' } });
+
+    const saveBtn = screen.getByRole('button', { name: /Guardar cambios/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(api.updateRecipe).toHaveBeenCalledWith(
+        'recipe_123',
+        expect.objectContaining({
+          name: 'Tortilla de patatas gourmet',
+        })
+      );
+      expect(mockOnUpdated).toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalled();
     });
   });
