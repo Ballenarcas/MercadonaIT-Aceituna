@@ -5,7 +5,7 @@ import { POPULAR_MERCADONA_CATALOG } from '../data/mercadonaCatalog';
 import type { Brand, Unit, Priority, ShoppingItem } from '../types';
 
 interface QuickAddBarProps {
-  onAddItem: (item: Omit<ShoppingItem, 'id' | 'createdAt' | 'completed'>) => void;
+  onAddItem: (item: Omit<ShoppingItem, 'id' | 'createdAt' | 'completed' | 'inCart' | 'listId'>) => void;
 }
 
 export const QuickAddBar: React.FC<QuickAddBarProps> = ({ onAddItem }) => {
