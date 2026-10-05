@@ -7,3 +7,5 @@ python-dotenv>=1.0.0
 groq>=0.11.0
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
+thefuzz>=0.22.0
+RapidFuzz>=3.0.0

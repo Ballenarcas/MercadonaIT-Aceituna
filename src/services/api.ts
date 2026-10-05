@@ -217,12 +217,52 @@ export const api = {
     return res.json();
   },
 
+  async searchRecipesByIngredients(ingredients: string[]): Promise<any[]> {
+    const res = await fetch(`${API_BASE_URL}/recipes/search-by-ingredients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ingredients }),
+    });
+    if (!res.ok) throw new Error(`Error al buscar recetas: ${res.statusText}`);
+    return res.json();
+  },
+
+  async getMissingIngredients(recipe: string, userIngredients?: string[]): Promise<{ recipeName: string; missingIngredients: any[] }> {
+    const res = await fetch(`${API_BASE_URL}/recipes/missing-ingredients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipe, userIngredients }),
+    });
+    if (!res.ok) throw new Error(`Error al obtener ingredientes faltantes: ${res.statusText}`);
+    return res.json();
+  },
+
+  async createItemsBatch(
+    listId: string,
+    items: Partial<ShoppingItem>[],
+  ): Promise<ShoppingItem[]> {
+    const res = await fetch(`${API_BASE_URL}/items/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listId, items }),
+    });
+    if (!res.ok) throw new Error(`Error al añadir artículos: ${res.statusText}`);
+    return res.json();
+  },
+
   // ── AI CHAT ────────────────────────────────────────────────────────────────
   async sendChatMessage(
     message: string,
     listId: string,
     history: ChatMessage[],
-  ): Promise<{ reply: string; addedIngredients: string[]; suggestedRecipes: string[] }> {
+  ): Promise<{
+    reply: string;
+    addedIngredients: string[];
+    suggestedRecipes: string[];
+    recipeSuggestions?: any[];
+    missingIngredients?: any[];
+    recipeName?: string;
+  }> {
     const res = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

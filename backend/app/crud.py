@@ -213,12 +213,14 @@ def get_item(conn: sqlite3.Connection, item_id: str) -> Optional[ShoppingItemRes
 def create_item(conn: sqlite3.Connection, item_in: ShoppingItemCreate) -> ShoppingItemResponse:
     new_id = f"item_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
     created_at = int(time.time() * 1000)
+    in_cart_val = 1 if getattr(item_in, "inCart", False) else 0
+    completed_val = 1 if in_cart_val else 0
     
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO shopping_items (
             id, list_id, name, category_id, brand, quantity, unit, estimated_price, notes, completed, in_cart, priority, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         new_id,
         item_in.listId or "default",
@@ -229,11 +231,23 @@ def create_item(conn: sqlite3.Connection, item_in: ShoppingItemCreate) -> Shoppi
         item_in.unit,
         item_in.estimatedPrice,
         item_in.notes,
+        completed_val,
+        in_cart_val,
         item_in.priority,
         created_at
     ))
     conn.commit()
     return get_item(conn, new_id) # type: ignore
+
+def create_items_batch(conn: sqlite3.Connection, list_id: str, items: List[ShoppingItemCreate]) -> List[ShoppingItemResponse]:
+    created = []
+    for item in items:
+        item_data = item.model_copy()
+        item_data.listId = list_id
+        res = create_item(conn, item_data)
+        if res:
+            created.append(res)
+    return created
 
 def update_item(conn: sqlite3.Connection, item_id: str, item_in: ShoppingItemUpdate) -> Optional[ShoppingItemResponse]:
     current = get_item(conn, item_id)
