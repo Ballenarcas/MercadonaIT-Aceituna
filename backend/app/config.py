@@ -1,5 +1,11 @@
 import os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # carga .env en os.environ (si existe)
+except ImportError:
+    pass
+
 class Settings:
     PROJECT_NAME: str = "Mercadona Shopping List API"
     VERSION: str = "1.0.0"

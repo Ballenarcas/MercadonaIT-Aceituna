@@ -3,7 +3,16 @@ import os
 import time
 from typing import Generator
 
-DB_FILE = os.path.abspath("mercadona.db")
+def _resolve_db_path(database_url: str) -> str:
+    """Acepta sqlite:///./mercadona.db, sqlite:///C:/ruta/x.db o una ruta directa."""
+    if database_url.startswith("sqlite:///"):
+        return database_url[len("sqlite:///"):]
+    if database_url.startswith("sqlite://"):
+        return database_url[len("sqlite://"):]
+    return database_url
+
+
+DB_FILE = os.path.abspath(_resolve_db_path(os.getenv("DATABASE_URL", "sqlite:///./mercadona.db")))
 
 def init_db():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
