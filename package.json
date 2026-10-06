@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "backend": "python backend/run.py",
-    "backend:test": "pytest backend"
+    "backend:test": "python -m pytest backend"
   },
   "dependencies": {
     "clsx": "^2.1.1",
