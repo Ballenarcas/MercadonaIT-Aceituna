@@ -1,5 +1,5 @@
 import React from 'react';
-import logoMercadona from '../assets/Logo_Mercadona.png'; 
+import logoMercadona from '../assets/Logo_mercadona.png';
 
 interface HeaderProps {
   cartCount?: number;
