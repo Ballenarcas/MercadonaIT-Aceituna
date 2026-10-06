@@ -418,7 +418,6 @@ export const CreateRecipeModal: React.FC<CreateRecipeModalProps> = ({
               {ingredients.map((ing, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <select
-                    required
                     value={ing.name}
                     onChange={(e) => handleIngredientChange(idx, 'name', e.target.value)}
                     className="flex-1 min-w-0 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#00703c]"

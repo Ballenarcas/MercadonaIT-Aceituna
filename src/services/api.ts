@@ -86,7 +86,9 @@ export const api = {
     return res.json();
   },
 
-  async createItem(item: Omit<ShoppingItem, 'id' | 'createdAt' | 'completed' | 'inCart'>): Promise<ShoppingItem> {
+  async createItem(
+    item: Omit<ShoppingItem, 'id' | 'createdAt' | 'completed' | 'inCart'> & Pick<Partial<ShoppingItem>, 'inCart'>,
+  ): Promise<ShoppingItem> {
     const res = await fetch(`${API_BASE_URL}/items`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

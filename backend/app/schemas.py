@@ -44,7 +44,6 @@ class ShoppingItemBase(BaseModel):
     notes: Optional[str] = None
     priority: PriorityType = Field(default="media")
     inCart: bool = Field(default=False, alias="inCart")
-    inCart: bool = Field(default=False, alias="inCart")
 
     model_config = ConfigDict(populate_by_name=True)
 
