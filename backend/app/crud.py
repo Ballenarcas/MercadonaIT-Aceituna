@@ -542,18 +542,21 @@ def add_recipe_to_list(
     if not recipe:
         return []
 
-    scale = (req.servings / recipe.servings) if req.servings and recipe.servings else 1.0
+    # Guard: avoid ZeroDivisionError if recipe.servings <= 0
+    scale = (req.servings / recipe.servings) if (req.servings and recipe.servings and recipe.servings > 0) else 1.0
+
     added: List[ShoppingItemResponse] = []
     now = int(time.time() * 1000)
+    cursor = conn.cursor()
 
+    # Collect item_ids to fetch after a single commit (was N commits - 1 per ingredient)
+    item_ids: List[str] = []
     for idx, ing in enumerate(recipe.ingredients):
         if req.skipOptional and ing.isOptional:
             continue
         item_id = f"item_{now + idx}_{uuid.uuid4().hex[:6]}"
-        # Los ingredientes ya están en formato de compra (1 tarro, 1 litro...),
-        # se copian tal cual escalando la cantidad por comensales.
         buy_qty = round(ing.quantity * scale, 2)
-        conn.cursor().execute("""
+        cursor.execute("""
             INSERT INTO shopping_items
                 (id, list_id, name, category_id, brand, quantity, unit, estimated_price, notes, completed, in_cart, priority, created_at)
             VALUES (?, ?, ?, ?, 'General', ?, ?, ?, ?, 0, 0, 'media', ?)
@@ -562,13 +565,16 @@ def add_recipe_to_list(
             buy_qty, ing.unit, ing.estimatedPrice,
             f"De receta: {recipe.name}", now + idx,
         ))
-        conn.commit()
+        item_ids.append(item_id)
+
+    conn.commit()  # Single commit after all inserts
+
+    for item_id in item_ids:
         item = get_item(conn, item_id)
         if item:
             added.append(item)
 
     return added
-
 def get_list_as_json(conn: sqlite3.Connection, list_id: str) -> Dict[str, Any]:
     """Returns the full list in structured JSON format, ready for AI consumption."""
     lst = get_list(conn, list_id)

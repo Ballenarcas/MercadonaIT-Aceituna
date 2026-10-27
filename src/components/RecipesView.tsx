@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, ChefHat, Clock, Users, ShoppingCart, Trash2, Tag, X } from 'lucide-react';
 import type { Recipe, RecipeCategory, ShoppingList, Unit } from '../types';
 import { api } from '../services/api';
@@ -296,15 +296,21 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onAddToList, onDelete }
   const [added, setAdded] = useState(false);
 
   const handleAdd = async () => {
-    setAdding(true);
-    await onAddToList(recipe, servings);
-    setAdding(false);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+    try {
+      setAdding(true);
+      await onAddToList(recipe, servings);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    } catch (err) {
+      console.error('Error adding recipe to list:', err);
+      alert('Error al añadir los ingredientes a la lista.');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const totalCost = recipe.ingredients.reduce(
-    (sum, ing) => sum + (ing.estimatedPrice ?? 0) * ing.quantity * (servings / recipe.servings),
+    (sum, ing) => sum + (ing.estimatedPrice ?? 0) * ing.quantity * (servings / (recipe.servings || 1)),
     0,
   );
 
@@ -370,10 +376,10 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, onAddToList, onDelete }
                   {ing.name}
                 </span>
                 <span className="text-slate-500 text-xs">
-                  {(ing.quantity * (servings / recipe.servings)).toFixed(1)} {ing.unit}
+                  {(ing.quantity * (servings / (recipe.servings || 1))).toFixed(1)} {ing.unit}
                   {ing.estimatedPrice && (
                     <span className="ml-1.5 text-emerald-600 font-medium">
-                      ~{(ing.estimatedPrice * ing.quantity * (servings / recipe.servings)).toFixed(2)}€
+                      ~{(ing.estimatedPrice * ing.quantity * (servings / (recipe.servings || 1))).toFixed(2)}€
                     </span>
                   )}
                 </span>
@@ -457,8 +463,13 @@ export const RecipesView: React.FC<RecipesViewProps> = ({ activeList, onIngredie
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta receta?')) return;
-    await api.deleteRecipe(id);
-    setRecipes((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await api.deleteRecipe(id);
+      setRecipes((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error('Error al eliminar la receta:', err);
+      alert('No se pudo eliminar la receta. Inténtalo de nuevo.');
+    }
   };
 
   const handleCreated = (recipe: Recipe) => {

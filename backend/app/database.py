@@ -1,4 +1,4 @@
-import sqlite3
+﻿import sqlite3
 import os
 import time
 import hashlib
@@ -210,6 +210,23 @@ def init_db(seed: bool = False):
     # Migrate quantities created before the API unit enum was restricted.
     cursor.execute("UPDATE recipe_ingredients SET unit = 'g' WHERE unit = 'ml'")
 
+    # 9. Create mercadona_catalog_products table (Real scraped Mercadona products)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS mercadona_catalog_products (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        category_id TEXT NOT NULL,
+        brand TEXT NOT NULL DEFAULT 'General',
+        default_unit TEXT NOT NULL DEFAULT 'ud',
+        typical_price REAL NOT NULL,
+        bulk_price REAL,
+        packaging TEXT,
+        thumbnail TEXT,
+        share_url TEXT,
+        is_popular INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL
+    );
+    """)
     # 6. Create productos table (Mercadona DB schema)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS productos (

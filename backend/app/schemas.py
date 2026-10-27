@@ -1,4 +1,4 @@
-from typing import Optional, Literal, List
+﻿from typing import Optional, Literal, List
 from pydantic import BaseModel, ConfigDict, Field
 
 BrandType = Literal['Hacendado', 'Bosque Verde', 'Deliplus', 'Compy', 'General']
@@ -89,6 +89,31 @@ class CatalogProductResponse(BaseModel):
     defaultUnit: UnitType = Field(alias="defaultUnit")
     typicalPrice: float = Field(alias="typicalPrice")
     popular: Optional[bool] = False
+    bulkPrice: Optional[float] = Field(default=None, alias="bulkPrice")
+    packaging: Optional[str] = None
+    thumbnail: Optional[str] = None
+    shareUrl: Optional[str] = Field(default=None, alias="shareUrl")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class ScraperSyncRequest(BaseModel):
+    maxCategories: Optional[int] = Field(default=None, alias="maxCategories")
+    delay: float = Field(default=0.3, ge=0.0, le=5.0)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class ScraperSyncResponse(BaseModel):
+    success: bool
+    categoriesScraped: int = Field(alias="categoriesScraped")
+    productsScraped: int = Field(alias="productsScraped")
+    message: str
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class ScraperStatsResponse(BaseModel):
+    totalProducts: int = Field(alias="totalProducts")
+    lastUpdated: Optional[int] = Field(default=None, alias="lastUpdated")
+    hasRealData: bool = Field(alias="hasRealData")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -193,9 +218,10 @@ class ChatMessage(BaseModel):
     content: str
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(max_length=2000)
     listId: str = Field(default="default", alias="listId")
-    history: List[ChatMessage] = Field(default_factory=list)
+    # Limit history to prevent DoS and excessive LLM token usage
+    history: List[ChatMessage] = Field(default_factory=list, max_length=40)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -229,3 +255,4 @@ class MissingIngredientsResponse(BaseModel):
     missingIngredients: List[MissingIngredientItem] = Field(default_factory=list, alias="missingIngredients")
 
     model_config = ConfigDict(populate_by_name=True)
+

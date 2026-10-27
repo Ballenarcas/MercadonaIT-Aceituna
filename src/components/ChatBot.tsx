@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { Check, Loader2, MessageSquareText, Plus, Send, ShoppingCart } from 'lucide-react';
 import mercaditoImage from '../assets/Mercadito.png';
 import { api } from '../services/api';
@@ -29,13 +29,22 @@ const WELCOME_MESSAGE: ChatMessage = {
     '¡Hola! Soy **mercadITo** 🛒, tu asistente de cocina y compras.\n\nPuedo ayudarte a:\n• 🍽️ **Recomendar recetas** según lo que te apetezca\n• 🛒 **Añadir ingredientes** a tu lista de la compra\n• 📋 **Ver tu lista** actual y sugerirte complementos\n\n¿Qué te apetece cocinar hoy?',
 };
 
-function inlineMd(text: string) {
+function escapeHtml(text: string): string {
   return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/_([^_\n]+)_/g, '<em>$1</em>');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
+function inlineMd(text: string) {
+  const safeText = escapeHtml(text);
+  return safeText
+    .replace(/\*\*(.+?)\*\*/g, '<strong></strong>')
+    .replace(/\*(.+?)\*/g, '<em></em>')
+    .replace(/_([^_\n]+)_/g, '<em></em>');
+}
 function formatMarkdown(text: string, isUserMessage = false) {
   const lines = text.split('\n');
   const textColor = isUserMessage ? 'text-white' : 'text-slate-700';
@@ -303,7 +312,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({
     setIsSending(true);
 
     try {
-      const response = await api.sendChatMessage(trimmed, activeList.id, messages);
+      const response = await api.sendChatMessage(trimmed, activeList.id, messages.slice(-20));
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: response.reply || 'He recibido tu mensaje. Pronto te ayudaré con tus listas o recetas.',

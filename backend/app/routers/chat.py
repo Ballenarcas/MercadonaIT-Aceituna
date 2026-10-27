@@ -1,4 +1,4 @@
-"""
+﻿"""
 AI Chatbot endpoint powered by GroqCloud and fuzzy matching with thefuzz.
 
 The bot can:
@@ -209,11 +209,14 @@ def _execute_tool(name: str, args: Dict[str, Any], list_id: str, db: sqlite3.Con
         return json.dumps(recipe_data)
 
     elif name == "add_recipe_to_list":
+        rec_id = args.get("recipe_id")
+        if not rec_id or not isinstance(rec_id, str):
+            return json.dumps({"error": "ID de receta inválido o no proporcionado."})
         req = AddRecipeToListRequest(
             listId=list_id,
-            servings=args.get("servings"),
+            servings=args.get("servings") if isinstance(args.get("servings"), int) and args.get("servings") > 0 else None,
         )
-        added = crud.add_recipe_to_list(db, args["recipe_id"], req)
+        added = crud.add_recipe_to_list(db, rec_id, req)
         names = [i.name for i in added]
         return json.dumps({"added": names, "count": len(names)})
 
@@ -315,7 +318,7 @@ def chat(req: ChatRequest, db: sqlite3.Connection = Depends(get_db)):
             elif suggested_recipes_data:
                 system_msg += f"\nSe han encontrado {len(suggested_recipes_data)} recetas en la base de datos que coinciden con los ingredientes del usuario: {', '.join(suggested_recipe_names)}."
             messages: List[Dict[str, Any]] = [{"role": "system", "content": system_msg}]
-            for msg in req.history:
+            for msg in req.history[-20:]:
                 messages.append({"role": msg.role, "content": msg.content})
             messages.append({"role": "user", "content": req.message})
 

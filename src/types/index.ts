@@ -1,4 +1,4 @@
-export type Brand = 'Hacendado' | 'Bosque Verde' | 'Deliplus' | 'Compy' | 'General';
+﻿export type Brand = 'Hacendado' | 'Bosque Verde' | 'Deliplus' | 'Compy' | 'General';
 
 export type Unit = 'ud' | 'kg' | 'g' | 'pack' | 'litro' | 'docena' | 'bandeja';
 
@@ -50,6 +50,10 @@ export interface CatalogProduct {
   defaultUnit: Unit;
   typicalPrice: number;
   popular?: boolean;
+  bulkPrice?: number;
+  packaging?: string;
+  thumbnail?: string;
+  shareUrl?: string;
 }
 
 // ── Recipes ───────────────────────────────────────────────────────────────────

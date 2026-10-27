@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+﻿import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { ShoppingItem, ShoppingList, SortOption, FilterStatus, CatalogProduct } from '../types';
 import { INITIAL_SAMPLE_ITEMS } from '../data/mercadonaCatalog';
 import { getCategoryById } from '../data/categories';
@@ -38,7 +38,10 @@ export function useShoppingList() {
   const [lists, setLists] = useState<ShoppingList[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_LISTS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -59,7 +62,10 @@ export function useShoppingList() {
   const [items, setItems] = useState<ShoppingItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_ITEMS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       console.error(e);
     }

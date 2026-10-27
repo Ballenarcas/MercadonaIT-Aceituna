@@ -1,4 +1,4 @@
-import sqlite3
+﻿import sqlite3
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from ..database import get_db
@@ -96,9 +96,15 @@ def delete_completed(list_id: Optional[str] = None, db: sqlite3.Connection = Dep
     return {"deletedCount": count, "message": f"Se eliminaron {count} artículos completados"}
 
 @router.delete("/all", status_code=status.HTTP_200_OK)
-def delete_all(db: sqlite3.Connection = Depends(get_db)):
-    """Vaciar toda la lista de la compra."""
-    count = crud.clear_all(db)
+def delete_all(list_id: Optional[str] = None, db: sqlite3.Connection = Depends(get_db)):
+    """Vaciar la lista de la compra (opcionalmente filtrado por list_id)."""
+    if list_id and list_id != "all":
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM shopping_items WHERE list_id = ?", (list_id,))
+        db.commit()
+        count = cursor.rowcount
+    else:
+        count = crud.clear_all(db)
     return {"deletedCount": count, "message": f"Lista vaciada ({count} artículos eliminados)"}
 
 @router.get("/{item_id}", response_model=ShoppingItemResponse)

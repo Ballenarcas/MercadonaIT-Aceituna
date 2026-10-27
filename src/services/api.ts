@@ -30,7 +30,7 @@ export const api = {
   },
 
   async updateList(id: string, updates: Partial<ShoppingList>): Promise<ShoppingList> {
-    const res = await fetch(`${API_BASE_URL}/lists/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/lists/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -40,14 +40,14 @@ export const api = {
   },
 
   async deleteList(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/lists/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/lists/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error(`Error al eliminar lista: ${res.statusText}`);
   },
 
   async getListJson(listId: string): Promise<object> {
-    const res = await fetch(`${API_BASE_URL}/lists/${listId}/json`);
+    const res = await fetch(`${API_BASE_URL}/lists/${encodeURIComponent(listId)}/json`);
     if (!res.ok) throw new Error(`Error al obtener JSON de lista: ${res.statusText}`);
     return res.json();
   },
@@ -99,7 +99,7 @@ export const api = {
   },
 
   async updateItem(id: string, updates: Partial<ShoppingItem>): Promise<ShoppingItem> {
-    const res = await fetch(`${API_BASE_URL}/items/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/items/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -109,7 +109,7 @@ export const api = {
   },
 
   async toggleCart(id: string): Promise<ShoppingItem> {
-    const res = await fetch(`${API_BASE_URL}/items/${id}/toggle-cart`, {
+    const res = await fetch(`${API_BASE_URL}/items/${encodeURIComponent(id)}/toggle-cart`, {
       method: 'PATCH',
     });
     if (!res.ok) throw new Error(`Error al mover artículo: ${res.statusText}`);
@@ -121,31 +121,31 @@ export const api = {
   },
 
   async deleteItem(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/items/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/items/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error(`Error al eliminar artículo: ${res.statusText}`);
   },
 
   async clearCompleted(listId?: string): Promise<void> {
-    const url = listId ? `${API_BASE_URL}/items/completed?list_id=${listId}` : `${API_BASE_URL}/items/completed`;
+    const url = listId ? `${API_BASE_URL}/items/completed?list_id=${encodeURIComponent(listId)}` : `${API_BASE_URL}/items/completed`;
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Error al limpiar completados: ${res.statusText}`);
   },
 
   async clearCart(listId?: string): Promise<void> {
-    const url = listId ? `${API_BASE_URL}/lists/${listId}/cart` : `${API_BASE_URL}/items/completed`;
+    const url = listId ? `${API_BASE_URL}/lists/${encodeURIComponent(listId)}/cart` : `${API_BASE_URL}/items/completed`;
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Error al vaciar carrito: ${res.statusText}`);
   },
 
   async moveAllToCart(listId: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/lists/${listId}/move-all-to-cart`, { method: 'POST' });
+    const res = await fetch(`${API_BASE_URL}/lists/${encodeURIComponent(listId)}/move-all-to-cart`, { method: 'POST' });
     if (!res.ok) throw new Error(`Error al mover todo al carrito: ${res.statusText}`);
   },
 
   async resetSample(listId?: string): Promise<ShoppingItem[]> {
-    const url = listId ? `${API_BASE_URL}/items/reset-sample?list_id=${listId}` : `${API_BASE_URL}/items/reset-sample`;
+    const url = listId ? `${API_BASE_URL}/items/reset-sample?list_id=${encodeURIComponent(listId)}` : `${API_BASE_URL}/items/reset-sample`;
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error(`Error al restaurar ejemplos: ${res.statusText}`);
     return res.json();
@@ -167,8 +167,23 @@ export const api = {
     return res.json();
   },
 
+  async syncMercadonaCatalog(maxCategories?: number): Promise<{ success: boolean; categoriesScraped: number; productsScraped: number; message: string }> {
+    const res = await fetch(`${API_BASE_URL}/catalog/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maxCategories }),
+    });
+    if (!res.ok) throw new Error(`Error al sincronizar con Mercadona: ${res.statusText}`);
+    return res.json();
+  },
+
+  async getCatalogStats(): Promise<{ totalProducts: number; lastUpdated?: number; hasRealData: boolean }> {
+    const res = await fetch(`${API_BASE_URL}/catalog/stats`);
+    if (!res.ok) throw new Error(`Error al obtener estadísticas del catálogo: ${res.statusText}`);
+    return res.json();
+  },
   async getShareText(listId?: string): Promise<string> {
-    const url = listId ? `${API_BASE_URL}/items/share-text?list_id=${listId}` : `${API_BASE_URL}/items/share-text`;
+    const url = listId ? `${API_BASE_URL}/items/share-text?list_id=${encodeURIComponent(listId)}` : `${API_BASE_URL}/items/share-text`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Error al generar texto: ${res.statusText}`);
     const data = await res.json();
@@ -186,7 +201,7 @@ export const api = {
   },
 
   async getRecipe(id: string): Promise<Recipe> {
-    const res = await fetch(`${API_BASE_URL}/recipes/${id}`);
+    const res = await fetch(`${API_BASE_URL}/recipes/${encodeURIComponent(id)}`);
     if (!res.ok) throw new Error(`Receta no encontrada`);
     return res.json();
   },
@@ -202,7 +217,7 @@ export const api = {
   },
 
   async updateRecipe(id: string, updates: Partial<Recipe>): Promise<Recipe> {
-    const res = await fetch(`${API_BASE_URL}/recipes/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/recipes/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -212,7 +227,7 @@ export const api = {
   },
 
   async deleteRecipe(id: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/recipes/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE_URL}/recipes/${encodeURIComponent(id)}`, { method: 'DELETE' });
     if (!res.ok) throw new Error(`Error al eliminar receta: ${res.statusText}`);
   },
 
@@ -220,7 +235,7 @@ export const api = {
     recipeId: string,
     opts: { listId: string; servings?: number; skipOptional?: boolean },
   ): Promise<ShoppingItem[]> {
-    const res = await fetch(`${API_BASE_URL}/recipes/${recipeId}/add-to-list`, {
+    const res = await fetch(`${API_BASE_URL}/recipes/${encodeURIComponent(recipeId)}/add-to-list`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ listId: opts.listId, servings: opts.servings, skipOptional: opts.skipOptional ?? false }),
